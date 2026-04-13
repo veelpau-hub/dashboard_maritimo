@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Dashboard Marítimo — Rota</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- SIDEBAR PRINCIPAL -->
+    <div class="sidebar">
+        <button class="sidebar-btn active" onclick="switchTab('overview')">
+            <i class="fa-solid fa-ship"></i>
+        </button>
+        <button class="sidebar-btn" onclick="switchTab('dashboard')">
+            <i class="fa-solid fa-chart-bar"></i>
+        </button>
+        <button class="sidebar-btn" onclick="switchTab('mapa')">
+            <i class="fa-solid fa-map"></i>
+        </button>
+        <button class="sidebar-btn" onclick="switchTab('settings')">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+    </div>
+
+    <!-- SUBMENÚ DASHBOARD -->
+    <div class="submenu" id="submenu">
+        <button class="submenu-btn active"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+        <button class="submenu-btn"><i class="fa-solid fa-chart-bar"></i></button>
+    </div>
+
+    <!-- PANEL OVERVIEW -->
+    <div class="panel" id="panel-overview">
+        <div class="panel-header">
+            <div>
+                <p class="panel-label">Overview</p>
+                <h2 class="panel-title">NAVSTA Rota ROZ</h2>
+                <p class="panel-coords">36.636700 N | W 6.349324</p>
+            </div>
+        </div>
+
+        <div class="olas-container" id="grafico-olas"></div>
+
+<!-- BOTÓN CONFIGURAR -->
+<button class="config-btn" onclick="toggleConfig()">
+    <i class="fa-solid fa-sliders"></i> Personalizar
+</button>
+
+<!-- PANEL CONFIGURACIÓN -->
+<div class="config-panel hidden" id="config-panel">
+    <p class="config-titulo">Widgets visibles</p>
+    <div class="config-grid" id="config-grid"></div>
+    <button class="config-guardar" onclick="guardarPrefs()">Guardar</button>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas" id="metricas-grid">
+
+    <div class="card-metrica widget" data-widget="temperatura">
+        <div class="temp-header">
+            <span class="metrica-valor" id="temp-valor">{{ datos.temperatura_c }}°</span>
+            <button class="temp-toggle" id="temp-btn" onclick="toggleTemp()">°C</button>
+        </div>
+        <span class="metrica-sub">Sensación <span id="sensacion">{{ datos.sensacion_c }}°C</span></span>
+    </div>
+
+    <div class="card-metrica widget" data-widget="viento">
+        <div id="brujula-container"></div>
+        <span class="metrica-sub">{{ datos.viento_kmh }} km/h · Racha {{ datos.racha_kmh }} km/h</span>
+    </div>
+
+    <div class="card-metrica widget" data-widget="sol">
+        <div id="sol-container"></div>
+        <span class="metrica-sub">Salida · Puesta</span>
+    </div>
+
+    <div class="card-metrica widget" data-widget="olas">
+        <div id="olas-container"></div>
+        <span class="metrica-sub">Ola máx · Mín {{ datos.altura_min }}m</span>
+    </div>
+
+    <div class="card-metrica widget" data-widget="presion">
+        <div id="presion-container"></div>
+        <span class="metrica-sub">Presión atmosférica</span>
+    </div>
+
+    <div class="card-metrica widget" data-widget="visibilidad">
+        <div id="visibilidad-container"></div>
+        <span class="metrica-sub">Visibilidad</span>
+    </div>
+
+    {% if datos.temp_agua %}
+    <div class="card-metrica widget" data-widget="temperatura_agua">
+        <div id="temp-agua-container"></div>
+        <span class="metrica-sub">Temp. del agua</span>
+    </div>
+    {% endif %}
+
+    <div class="card-metrica widget" data-widget="beaufort">
+        <div id="beaufort-container"></div>
+        <span class="metrica-sub">Escala Beaufort</span>
+    </div>
+
+</div>
+<div class="mapa-placeholder">
+    <div id="mapa"></div>
+</div>
+
+    <!-- PANEL DASHBOARD -->
+    <div class="panel hidden" id="panel-dashboard">
+        <div class="panel-header">
+            <p class="panel-label">DASHBOARD</p>
+            <button class="close-btn" onclick="switchTab('overview')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="dash-skeleton-grid">
+            <div class="sk full"></div>
+            <div class="sk medium"></div>
+            <div class="sk small"></div>
+            <div class="sk full2"></div>
+            <div class="sk cuarto"></div>
+            <div class="sk cuarto"></div>
+            <div class="sk cuarto"></div>
+            <div class="sk cuarto"></div>
+            <div class="sk grande"></div>
+        </div>
+    </div>
+
+    <!-- PANEL DERECHO 
+    <div class="panel-derecho">
+        <p class="panel-label" style="margin-bottom: 0.75rem;">OLEAJE — HOY</p>
+        <div id="grafico-olas-derecho"></div>
+    </div>-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+    const MAPBOX_KEY = "{{ mapbox_key }}";
+    const horas = {{ datos.horas | tojson | safe }};
+    const alturas = {{ datos.alturas | tojson | safe }};
+    const tempC = {{ datos.temperatura_c }};
+    const sensacionC = {{ datos.sensacion_c }};
+    const vientoGrados = {{ datos.viento_grados }};
+    const vientoDir = "{{ datos.viento_dir }}";
+    const beaufortValor = {{ datos.beaufort }};
+    const sunrise = "{{ datos.sunrise }}";
+    const sunset = "{{ datos.sunset }}";
+    const olaMax = {{ datos.altura_max }};
+    const olaMin = {{ datos.altura_min }};
+    const olaMedia = {{ datos.altura_media }};
+    const prefsIniciales = {{ prefs | tojson | safe }};
+    const presionValor = {{ datos.presion }};
+    const visibilidadValor = {{ datos.visibilidad }};
+    const tempAguaValor = {{ datos.temp_agua or 'null' }};
+</script>
+<script src="/static/js/widgets.js"></script>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/mapa.js"></script>
+</body>
+</html>
