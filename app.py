@@ -205,6 +205,12 @@ def api_save_prefs():
     save_preferencias('default', data)
     return jsonify({'ok': True})
 
+@app.route('/debug')
+def debug():
+    return jsonify({
+        'mapbox_key': os.environ.get('MAPBOX_KEY', 'NO ENCONTRADA')
+    })
+
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
