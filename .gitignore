@@ -1,4 +1,4 @@
 .env
 preferencias.db
 __pycache__/
-*.pyc
+*.pyc.superpowers/
