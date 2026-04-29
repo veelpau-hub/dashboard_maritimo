@@ -5,6 +5,7 @@ import urllib3
 import sqlite3
 import json
 import os
+import math
 import logging
 from dotenv import load_dotenv
 load_dotenv()
@@ -13,6 +14,56 @@ urllib3.disable_warnings()
 AEMET_API_KEY = os.getenv('AEMET_API_KEY', '')
 AISHUB_USER = os.getenv('AISHUB_USER', '')
 
+
+COASTAL_POINTS = [
+    {"name": "Rota",              "lat": 36.637, "lon": -6.362},
+    {"name": "Huelva",            "lat": 37.110, "lon": -7.048},
+    {"name": "Sanlúcar",          "lat": 36.774, "lon": -6.356},
+    {"name": "Tarifa",            "lat": 36.014, "lon": -5.607},
+    {"name": "Algeciras",         "lat": 36.127, "lon": -5.456},
+    {"name": "Marbella",          "lat": 36.510, "lon": -4.887},
+    {"name": "Málaga",            "lat": 36.721, "lon": -4.421},
+    {"name": "Motril",            "lat": 36.740, "lon": -3.518},
+    {"name": "Almería",           "lat": 36.834, "lon": -2.464},
+    {"name": "Cartagena",         "lat": 37.606, "lon": -0.992},
+    {"name": "Torrevieja",        "lat": 37.978, "lon": -0.692},
+    {"name": "Alicante",          "lat": 38.345, "lon": -0.481},
+    {"name": "Benidorm",          "lat": 38.540, "lon": -0.133},
+    {"name": "Valencia",          "lat": 39.469, "lon": -0.324},
+    {"name": "Gandía",            "lat": 38.985, "lon": -0.164},
+    {"name": "Castellón",         "lat": 39.986, "lon":  0.024},
+    {"name": "Tarragona",         "lat": 41.117, "lon":  1.249},
+    {"name": "Sitges",            "lat": 41.236, "lon":  1.812},
+    {"name": "Barcelona",         "lat": 41.383, "lon":  2.177},
+    {"name": "Mataró",            "lat": 41.540, "lon":  2.444},
+    {"name": "Blanes",            "lat": 41.672, "lon":  2.792},
+    {"name": "Palamós",           "lat": 41.846, "lon":  3.129},
+    {"name": "Roses",             "lat": 42.268, "lon":  3.178},
+    {"name": "San Sebastián",     "lat": 43.320, "lon": -1.981},
+    {"name": "Bilbao",            "lat": 43.363, "lon": -3.000},
+    {"name": "Santander",         "lat": 43.462, "lon": -3.810},
+    {"name": "Gijón",             "lat": 43.545, "lon": -5.663},
+    {"name": "Avilés",            "lat": 43.557, "lon": -5.925},
+    {"name": "A Coruña",          "lat": 43.371, "lon": -8.396},
+    {"name": "Ferrol",            "lat": 43.484, "lon": -8.233},
+    {"name": "Vigo",              "lat": 42.233, "lon": -8.723},
+    {"name": "Palma de Mallorca", "lat": 39.570, "lon":  2.650},
+    {"name": "Ibiza",             "lat": 38.907, "lon":  1.433},
+    {"name": "Menorca",           "lat": 39.888, "lon":  4.259},
+    {"name": "Las Palmas",        "lat": 28.124, "lon": -15.436},
+    {"name": "Tenerife Sur",      "lat": 28.044, "lon": -16.572},
+    {"name": "Lanzarote",         "lat": 28.963, "lon": -13.555},
+    {"name": "Fuerteventura",     "lat": 28.499, "lon": -13.862},
+    {"name": "La Palma",          "lat": 28.683, "lon": -17.764},
+    {"name": "El Hierro",         "lat": 27.742, "lon": -17.980},
+]
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371
+    r = math.radians
+    dlat = r(lat2 - lat1); dlon = r(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(r(lat1)) * math.cos(r(lat2)) * math.sin(dlon/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
 
 app = Flask(__name__)
 
@@ -177,11 +228,11 @@ def get_dash_cached(key, fetch_fn):
     _dash_cache_time[key] = now
     return _dash_cache[key]
 
-def fetch_meteo():
+def fetch_meteo(lat=36.62, lon=-6.35):
     r = requests.get('https://api.open-meteo.com/v1/forecast', params={
-        'latitude': 36.62, 'longitude': -6.35,
+        'latitude': lat, 'longitude': lon,
         'hourly': 'temperature_2m,wind_speed_10m,precipitation,surface_pressure',
-        'timezone': 'Europe/Madrid', 'forecast_days': 7
+        'timezone': 'auto', 'forecast_days': 7
     }, verify=False, timeout=10).json()
     return {
         'time': r['hourly']['time'],
@@ -191,11 +242,11 @@ def fetch_meteo():
         'pressure': r['hourly']['surface_pressure'],
     }
 
-def fetch_oleaje():
+def fetch_oleaje(lat=36.62, lon=-6.35):
     r = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
-        'latitude': 36.62, 'longitude': -6.35,
+        'latitude': lat, 'longitude': lon,
         'hourly': 'wave_height,wave_direction,wave_period,sea_surface_temperature',
-        'timezone': 'Europe/Madrid', 'forecast_days': 7
+        'timezone': 'auto', 'forecast_days': 7
     }, verify=False, timeout=10).json()
     return {
         'time': r['hourly']['time'],
@@ -271,11 +322,11 @@ def fetch_alertas():
     except Exception as e:
         return {'alertas': [], 'error': str(e)}
 
-def fetch_prediccion():
+def fetch_prediccion(lat=36.62, lon=-6.35):
     r = requests.get('https://api.open-meteo.com/v1/forecast', params={
-        'latitude': 36.62, 'longitude': -6.35,
+        'latitude': lat, 'longitude': lon,
         'daily': 'temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,weather_code,sunrise,sunset',
-        'timezone': 'Europe/Madrid', 'forecast_days': 7
+        'timezone': 'auto', 'forecast_days': 7
     }, verify=False, timeout=10).json()
     daily = r['daily']
     days = []
@@ -336,11 +387,32 @@ def api_save_prefs():
     save_preferencias('default', data)
     return jsonify({'ok': True})
 
+COORD_AWARE_TABS = {'meteo', 'oleaje', 'prediccion'}
+
+@app.route('/api/localize')
+def api_localize():
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    if lat is None or lon is None:
+        return jsonify({'error': 'lat y lon requeridos'}), 400
+    nearest = min(COASTAL_POINTS, key=lambda p: haversine(lat, lon, p['lat'], p['lon']))
+    dist = haversine(lat, lon, nearest['lat'], nearest['lon'])
+    return jsonify({
+        'name': nearest['name'],
+        'coastal_lat': nearest['lat'],
+        'coastal_lon': nearest['lon'],
+        'distance_km': round(dist, 1),
+    })
+
 @app.route('/api/dashboard/<tab>')
 def api_dashboard(tab):
     if tab not in _DASH_FETCHERS:
         return jsonify({'error': 'unknown tab'}), 404
     try:
+        lat = request.args.get('lat', type=float)
+        lon = request.args.get('lon', type=float)
+        if lat is not None and lon is not None and tab in COORD_AWARE_TABS:
+            return jsonify(_DASH_FETCHERS[tab](lat, lon))
         return jsonify(get_dash_cached(tab, _DASH_FETCHERS[tab]))
     except Exception as e:
         logging.error(f'Dashboard {tab}: {e}')

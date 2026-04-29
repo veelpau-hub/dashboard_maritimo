@@ -642,3 +642,10 @@ body {
 .map-controls { position: absolute; top: 12px; left: 12px; z-index: 10; background: #0d1520; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 130px; }
 .map-toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: rgba(255,255,255,0.6); cursor: pointer; user-select: none; }
 .map-toggle input[type=checkbox] { accent-color: #4AC8E8; }
+
+/* GEO LOCATION BAR */
+.geo-bar { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 1rem 0.5rem; }
+.geo-btn { background: rgba(74,200,232,0.12); border: 1px solid rgba(74,200,232,0.3); color: #4AC8E8; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.73rem; transition: background 0.2s; }
+.geo-btn:hover { background: rgba(74,200,232,0.22); }
+.geo-btn:disabled { opacity: 0.5; cursor: default; }
+.geo-indicator { color: rgba(255,255,255,0.38); font-size: 0.73rem; }

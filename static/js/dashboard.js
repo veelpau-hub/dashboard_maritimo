@@ -22,7 +22,12 @@ function switchDashTab(tab) {
     const content = document.getElementById('dash-content');
     content.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:0.8rem;padding:1rem">Cargando...</p>';
 
-    fetch(`/api/dashboard/${tab}`)
+    const coordAware = ['meteo','oleaje','prediccion'];
+    let url = `/api/dashboard/${tab}`;
+    if (window.geoCoords && coordAware.includes(tab))
+        url += `?lat=${window.geoCoords.lat}&lon=${window.geoCoords.lon}`;
+
+    fetch(url)
         .then(r => r.json())
         .then(data => { const fn = renders[tab]; if (fn) fn(data, content); })
         .catch(() => { content.innerHTML = '<p style="color:#ef4444;padding:1rem">Error cargando datos.</p>'; });

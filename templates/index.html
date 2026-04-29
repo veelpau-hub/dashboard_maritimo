@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<a href="https://ko-fi.com/dashboardmaritimo" target="_blank" class="kofi-banner">♥ Apoya el proyecto</a>
+<a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner">♥ Apoya el proyecto</a>
 
 <!-- SIDEBAR PRINCIPAL -->
 <div class="sidebar">
@@ -59,9 +59,14 @@
     <div class="panel-header">
         <div>
             <p class="panel-label">Overview</p>
-            <h2 class="panel-title">NAVSTA Rota ROZ</h2>
-            <p class="panel-coords">36.636700 N | W 6.349324</p>
+            <h2 class="panel-title" id="panel-title">NAVSTA Rota ROZ</h2>
+            <p class="panel-coords" id="panel-coords">36.636700 N | W 6.349324</p>
         </div>
+    </div>
+
+    <div class="geo-bar">
+        <button id="geo-btn" class="geo-btn" onclick="detectarUbicacion()">📍 Mi ubicación</button>
+        <span id="geo-indicator" class="geo-indicator">Datos de Rota (por defecto)</span>
     </div>
 
     <div class="olas-container" id="grafico-olas"></div>
@@ -215,7 +220,7 @@
             <div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISHub</span></div>
             <div class="settings-row">
                 <span>Apoya el proyecto</span>
-                <a href="https://ko-fi.com/dashboardmaritimo" target="_blank" style="color:#ff5e5b;font-size:0.8rem">Ko-fi ♥</a>
+                <a href="https://ko-fi.com/veellab" target="_blank" style="color:#ff5e5b;font-size:0.8rem">Ko-fi ♥</a>
             </div>
         </div>
 
@@ -249,5 +254,6 @@
 <script src="/static/js/main.js"></script>
 <script src="/static/js/mapa.js"></script>
 <script src="/static/js/dashboard.js"></script>
+<script src="/static/js/geo.js"></script>
 </body>
 </html>
