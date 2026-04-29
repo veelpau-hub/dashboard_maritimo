@@ -19,13 +19,24 @@ function switchTab(tab) {
     document.getElementById('submenu').classList.remove('visible');
     document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
 
-    if (tab === 'overview') {
-        document.getElementById('panel-overview').classList.remove('hidden');
-        document.querySelectorAll('.sidebar-btn')[0].classList.add('active');
-    } else if (tab === 'dashboard') {
-        document.getElementById('panel-dashboard').classList.remove('hidden');
+    const idx = { overview: 0, dashboard: 1, mapa: 2, settings: 3 };
+    const ids = ['panel-overview', 'panel-dashboard', 'panel-mapa', 'panel-settings'];
+
+    if (tab in idx) {
+        document.getElementById(ids[idx[tab]]).classList.remove('hidden');
+        document.querySelectorAll('.sidebar-btn')[idx[tab]].classList.add('active');
+    }
+    if (tab === 'dashboard') {
         document.getElementById('submenu').classList.add('visible');
-        document.querySelectorAll('.sidebar-btn')[1].classList.add('active');
+        const banner = document.getElementById('ad-banner-dash');
+        if (banner) banner.style.display = 'flex';
+    }
+    if (tab === 'mapa') {
+        if (window.mapa) window.mapa.resize();
+        if (typeof initMapLayers === 'function') initMapLayers();
+    }
+    if (tab === 'settings') {
+        if (typeof renderSettingsWidgets === 'function') renderSettingsWidgets();
     }
 }
 
