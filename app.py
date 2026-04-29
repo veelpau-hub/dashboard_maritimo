@@ -158,30 +158,7 @@ def get_datos_maritimos():
     _cache_time = time.time()
     return _cache
 
-# --- RUTAS ---
-@app.route('/')
-def index():
-    datos = get_datos_maritimos()
-    prefs = get_preferencias()
-    return render_template('index.html', datos=datos, prefs=prefs)
-
-@app.route('/api/datos')
-def api_datos():
-    return jsonify(get_datos_maritimos())
-
-@app.route('/api/preferencias', methods=['GET'])
-def api_get_prefs():
-    return jsonify(get_preferencias())
-
-@app.route('/api/preferencias', methods=['POST'])
-def api_save_prefs():
-    data = request.get_json()
-    save_preferencias('default', data)
-    return jsonify({'ok': True})
-
-if __name__ == '__main__':
-    init_db()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+init_db()
 
 # --- RUTAS ---
 @app.route('/')
