@@ -8,7 +8,7 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: url('/static/bg.png') center center / cover no-repeat;
+    background: #0a0f1e;
     font-family: 'Segoe UI', sans-serif;
     display: flex;
     align-items: center;
@@ -23,10 +23,9 @@ body {
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: rgba(255,255,255,0.12);
-    backdrop-filter: blur(20px);
+    background: #0d1520;
     border-radius: 16px;
-    border: 0.5px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.07);
     z-index: 10;
 }
 
@@ -58,10 +57,9 @@ body {
     flex-direction: column;
     gap: 0.5rem;
     padding: 0.75rem;
-    background: rgba(255,255,255,0.12);
-    backdrop-filter: blur(20px);
+    background: #0d1520;
     border-radius: 16px;
-    border: 0.5px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.07);
 }
 
 .submenu.visible {
@@ -69,35 +67,42 @@ body {
 }
 
 .submenu-btn {
-    width: 80px;
-    height: 80px;
+    width: 100%;
+    height: auto;
+    padding: 0.6rem 0.75rem;
     border: none;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: left;
+    white-space: nowrap;
 }
 
 .submenu-btn:hover {
-    background: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
     color: white;
 }
 
 .submenu-btn.active {
-    background: #4AC8E8;
-    color: white;
+    background: rgba(74,200,232,0.15);
+    color: #4AC8E8;
 }
+
+.submenu { width: 140px; }
 
 /* PANEL */
 .panel {
     width: 100%;
     height: 90vh;
-    background: rgba(255,255,255,0.12);
-    backdrop-filter: blur(20px);
+    background: #0d1520;
     border-radius: 20px;
-    border: 0.5px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.07);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
@@ -170,14 +175,16 @@ body {
 }
 
 .card-metrica {
-    background: rgba(255,255,255,0.1);
-    border: 0.5px solid rgba(255,255,255,0.15);
+    background: #0d1520;
+    border: 1px solid rgba(255,255,255,0.07);
     border-radius: 12px;
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
+    transition: border-color 0.2s;
 }
+.card-metrica:hover { border-color: rgba(74,200,232,0.3); }
 
 .metrica-valor {
     font-size: 1.8rem;
@@ -424,7 +431,7 @@ body {
     font-size: 12px;
     color: white;
     pointer-events: none;
-    backdrop-filter: blur(10px);
+    background: #0d1520;
 }
 
 .grid .tick line {
@@ -492,9 +499,7 @@ body {
     align-items: center;
 }
 
-.card-metrica {
-    min-height: 110px;
-}
+.card-metrica { min-height: 110px; }
 
 @media (max-width: 768px) {
     body {
@@ -557,12 +562,83 @@ body {
         border-bottom: none;
         padding: 0.75rem 1rem;
         z-index: 99;
-        backdrop-filter: blur(20px);
-        background: rgba(255,255,255,0.15);
+        background: #0d1520;
     }
 
     .submenu-btn {
-        width: 44px;
-        height: 44px;
+        width: auto;
+        height: auto;
     }
 }
+
+/* AD SLOTS */
+.ad-banner {
+    width: 728px; height: 90px;
+    background: rgba(255,255,255,0.03);
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0.75rem auto 0; flex-shrink: 0;
+}
+.ad-sidebar {
+    width: 160px; min-height: 600px;
+    background: rgba(255,255,255,0.03);
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 8px;
+    display: none; flex-direction: column;
+    align-items: center; padding-top: 0.5rem; flex-shrink: 0;
+}
+.ad-label { font-size: 0.6rem; color: rgba(255,255,255,0.2); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.25rem; }
+@media (min-width: 1400px) { .ad-sidebar { display: flex; } }
+@media (max-width: 768px) { .ad-banner, .ad-sidebar { display: none; } }
+
+/* DASHBOARD */
+.dash-panel { width: 100%; height: 100%; overflow-y: auto; padding: 1rem; }
+.dash-section-title { font-size: 0.65rem; letter-spacing: 2px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 1rem; }
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.dash-card { background: #0d1520; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1rem; }
+.dash-card-label { font-size: 0.65rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem; }
+.dash-card-value { font-size: 1.5rem; font-weight: 700; color: #4AC8E8; }
+.dash-card-sub { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.15rem; }
+.dash-chart-container { background: #0d1520; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; width: 100%; }
+
+/* SETTINGS */
+.settings-section { background: #0d1520; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+.settings-section h3 { font-size: 0.7rem; letter-spacing: 2px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 0.75rem; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.settings-row:last-child { border-bottom: none; }
+.settings-row span { font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+.unit-btn { padding: 0.25rem 0.6rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.5); font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+.unit-btn.active { background: rgba(74,200,232,0.15); border-color: #4AC8E8; color: #4AC8E8; }
+
+/* KOFI */
+.kofi-banner { position: fixed; top: 12px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,94,91,0.12); border: 1px solid rgba(255,94,91,0.25); border-radius: 20px; padding: 0.3rem 0.75rem; text-decoration: none; color: #ff5e5b; font-size: 0.72rem; transition: background 0.2s; }
+.kofi-banner:hover { background: rgba(255,94,91,0.22); }
+
+/* AIS TABLE */
+.ais-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.ais-table th { color: rgba(255,255,255,0.3); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.ais-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.75); }
+.ais-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+/* ALERT CARDS */
+.alert-card { border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-left: 3px solid; }
+.alert-card.verde { border-color: #22c55e; background: rgba(34,197,94,0.07); }
+.alert-card.amarillo { border-color: #f59e0b; background: rgba(245,158,11,0.07); }
+.alert-card.naranja { border-color: #f97316; background: rgba(249,115,22,0.07); }
+.alert-card.rojo { border-color: #ef4444; background: rgba(239,68,68,0.07); }
+.alert-title { font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+.alert-desc { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 0.2rem; }
+
+/* 7-DAY FORECAST */
+.forecast-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
+.forecast-day { background: #0d1520; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; }
+.forecast-day-name { font-size: 0.65rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; }
+.forecast-day-icon { font-size: 1.5rem; margin: 0.4rem 0; }
+.forecast-day-temp { font-size: 1rem; font-weight: 700; color: #4AC8E8; }
+.forecast-day-sub { font-size: 0.65rem; color: rgba(255,255,255,0.35); margin-top: 0.2rem; }
+
+/* MAP CONTROLS */
+.map-controls { position: absolute; top: 12px; left: 12px; z-index: 10; background: #0d1520; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 130px; }
+.map-toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: rgba(255,255,255,0.6); cursor: pointer; user-select: none; }
+.map-toggle input[type=checkbox] { accent-color: #4AC8E8; }
