@@ -101,3 +101,47 @@ async function guardarPrefs() {
 }
 
 aplicarPrefs();
+
+// --- SETTINGS ---
+let tempUnit = localStorage.getItem('tempUnit') || 'c';
+let windUnit = localStorage.getItem('windUnit') || 'kmh';
+let lang = localStorage.getItem('lang') || 'es';
+
+function setTempUnit(unit) {
+    tempUnit = unit;
+    localStorage.setItem('tempUnit', unit);
+    ['c','f'].forEach(u => document.getElementById(`btn-${u}`)?.classList.toggle('active', u===unit));
+    const val = unit==='f' ? Math.round(tempC*9/5+32) : tempC;
+    const sVal = unit==='f' ? Math.round(sensacionC*9/5+32) : sensacionC;
+    document.getElementById('temp-valor').textContent = val + '°';
+    document.getElementById('sensacion').textContent = sVal + '°' + unit.toUpperCase();
+    document.getElementById('temp-btn').textContent = '°' + unit.toUpperCase();
+}
+
+function setWindUnit(unit) {
+    windUnit = unit;
+    localStorage.setItem('windUnit', unit);
+    ['kmh','kn','ms'].forEach(u => document.getElementById(`btn-${u}`)?.classList.toggle('active', u===unit));
+}
+
+function setLang(l) {
+    lang = l;
+    localStorage.setItem('lang', l);
+    ['es','en'].forEach(u => document.getElementById(`btn-${u}`)?.classList.toggle('active', u===l));
+}
+
+function renderSettingsWidgets() {
+    const grid = document.getElementById('config-grid-settings');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.entries(WIDGET_NOMBRES).forEach(([key, nombre]) => {
+        const activo = prefsActuales[key] !== false;
+        grid.innerHTML += `<div class="config-item"><span>${nombre}</span>
+            <button class="toggle-btn ${activo?'on':'off'}" onclick="toggleWidget('${key}')">
+            ${activo?'ON':'OFF'}</button></div>`;
+    });
+}
+
+setTempUnit(tempUnit);
+setWindUnit(windUnit);
+setLang(lang);
