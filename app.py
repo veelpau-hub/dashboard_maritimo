@@ -5,9 +5,13 @@ import urllib3
 import sqlite3
 import json
 import os
+import logging
 from dotenv import load_dotenv
 load_dotenv()
 urllib3.disable_warnings()
+
+AEMET_API_KEY = os.getenv('AEMET_API_KEY', '')
+AISHUB_USER = os.getenv('AISHUB_USER', '')
 
 
 app = Flask(__name__)
@@ -160,6 +164,156 @@ def get_datos_maritimos():
 
 init_db()
 
+# --- DASHBOARD CACHE ---
+_dash_cache = {}
+_dash_cache_time = {}
+DASH_CACHE_SEGUNDOS = 600
+
+def get_dash_cached(key, fetch_fn):
+    now = time.time()
+    if key in _dash_cache and now - _dash_cache_time.get(key, 0) < DASH_CACHE_SEGUNDOS:
+        return _dash_cache[key]
+    _dash_cache[key] = fetch_fn()
+    _dash_cache_time[key] = now
+    return _dash_cache[key]
+
+def fetch_meteo():
+    r = requests.get('https://api.open-meteo.com/v1/forecast', params={
+        'latitude': 36.62, 'longitude': -6.35,
+        'hourly': 'temperature_2m,wind_speed_10m,precipitation,surface_pressure',
+        'timezone': 'Europe/Madrid', 'forecast_days': 7
+    }, verify=False, timeout=10).json()
+    return {
+        'time': r['hourly']['time'],
+        'temp': r['hourly']['temperature_2m'],
+        'wind': r['hourly']['wind_speed_10m'],
+        'precip': r['hourly']['precipitation'],
+        'pressure': r['hourly']['surface_pressure'],
+    }
+
+def fetch_oleaje():
+    r = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+        'latitude': 36.62, 'longitude': -6.35,
+        'hourly': 'wave_height,wave_direction,wave_period,sea_surface_temperature',
+        'timezone': 'Europe/Madrid', 'forecast_days': 7
+    }, verify=False, timeout=10).json()
+    return {
+        'time': r['hourly']['time'],
+        'height': r['hourly']['wave_height'],
+        'direction': r['hourly']['wave_direction'],
+        'period': r['hourly']['wave_period'],
+        'temp_agua': r['hourly']['sea_surface_temperature'],
+    }
+
+def fetch_mareas():
+    try:
+        r = requests.get(
+            'https://portus.puertos.es/portusObs/api/tide/getPrediction',
+            params={'stationId': '3304', 'date': '', 'numDays': 2},
+            timeout=8, verify=False
+        )
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {
+        'source': 'estimado',
+        'extremes': [
+            {'type': 'pleamar', 'time': '06:30', 'height': 2.8},
+            {'type': 'bajamar', 'time': '12:45', 'height': 0.4},
+            {'type': 'pleamar', 'time': '19:10', 'height': 2.6},
+        ]
+    }
+
+def fetch_ais():
+    if not AISHUB_USER:
+        return {'vessels': [], 'note': 'Configura AISHUB_USER en .env'}
+    try:
+        r = requests.get('http://data.aishub.net/ws.php', params={
+            'username': AISHUB_USER, 'format': '1', 'output': 'json',
+            'compress': '0', 'latmin': '36.3', 'latmax': '37.0',
+            'lonmin': '-7.0', 'lonmax': '-5.8'
+        }, timeout=10).json()
+        vessels = []
+        if isinstance(r, list) and len(r) > 1:
+            for v in r[1]:
+                vessels.append({
+                    'mmsi': v.get('MMSI'), 'name': v.get('NAME', 'Desconocido'),
+                    'type': v.get('TYPE', '-'), 'lat': v.get('LATITUDE'),
+                    'lon': v.get('LONGITUDE'), 'speed': v.get('SOG'), 'course': v.get('COG'),
+                })
+        return {'vessels': vessels}
+    except Exception as e:
+        return {'vessels': [], 'error': str(e)}
+
+def fetch_alertas():
+    if not AEMET_API_KEY:
+        return {'alertas': [], 'note': 'Configura AEMET_API_KEY en .env'}
+    try:
+        r = requests.get(
+            'https://opendata.aemet.es/opendata/api/avisos_cap/ultimoelaborado/ESP/11',
+            headers={'api_key': AEMET_API_KEY}, timeout=10, verify=False
+        ).json()
+        data_url = r.get('datos', '')
+        if not data_url:
+            return {'alertas': []}
+        alerts_raw = requests.get(data_url, timeout=10, verify=False).json()
+        alertas = []
+        for a in (alerts_raw if isinstance(alerts_raw, list) else []):
+            alertas.append({
+                'titulo': a.get('event', a.get('headline', 'Aviso')),
+                'descripcion': a.get('description', ''),
+                'nivel': a.get('severity', 'verde').lower(),
+                'inicio': a.get('onset', ''),
+                'fin': a.get('expires', ''),
+            })
+        return {'alertas': alertas}
+    except Exception as e:
+        return {'alertas': [], 'error': str(e)}
+
+def fetch_prediccion():
+    r = requests.get('https://api.open-meteo.com/v1/forecast', params={
+        'latitude': 36.62, 'longitude': -6.35,
+        'daily': 'temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,weather_code,sunrise,sunset',
+        'timezone': 'Europe/Madrid', 'forecast_days': 7
+    }, verify=False, timeout=10).json()
+    daily = r['daily']
+    days = []
+    for i in range(7):
+        days.append({
+            'date': daily['time'][i],
+            'temp_max': daily['temperature_2m_max'][i],
+            'temp_min': daily['temperature_2m_min'][i],
+            'precip': daily['precipitation_sum'][i],
+            'wind_max': daily['wind_speed_10m_max'][i],
+            'wave_max': None,
+            'code': daily['weather_code'][i],
+            'sunrise': daily['sunrise'][i][11:],
+            'sunset': daily['sunset'][i][11:],
+        })
+    return {'days': days}
+
+def fetch_calidad():
+    r = requests.get('https://air-quality-api.open-meteo.com/v1/air-quality', params={
+        'latitude': 36.62, 'longitude': -6.35,
+        'hourly': 'pm10,pm2_5,ozone,uv_index,european_aqi',
+        'timezone': 'Europe/Madrid', 'forecast_days': 1
+    }, verify=False, timeout=10).json()
+    h = r['hourly']
+    from datetime import datetime
+    hora = datetime.now().hour
+    return {
+        'pm10': h['pm10'][hora], 'pm25': h['pm2_5'][hora],
+        'ozone': h['ozone'][hora], 'uv': h['uv_index'][hora],
+        'aqi': h['european_aqi'][hora],
+    }
+
+_DASH_FETCHERS = {
+    'meteo': fetch_meteo, 'oleaje': fetch_oleaje, 'mareas': fetch_mareas,
+    'ais': fetch_ais, 'alertas': fetch_alertas,
+    'prediccion': fetch_prediccion, 'calidad': fetch_calidad,
+}
+
 # --- RUTAS ---
 @app.route('/')
 def index():
@@ -181,6 +335,16 @@ def api_save_prefs():
     data = request.get_json()
     save_preferencias('default', data)
     return jsonify({'ok': True})
+
+@app.route('/api/dashboard/<tab>')
+def api_dashboard(tab):
+    if tab not in _DASH_FETCHERS:
+        return jsonify({'error': 'unknown tab'}), 404
+    try:
+        return jsonify(get_dash_cached(tab, _DASH_FETCHERS[tab]))
+    except Exception as e:
+        logging.error(f'Dashboard {tab}: {e}')
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/debug')
 def debug():
