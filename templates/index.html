@@ -40,9 +40,9 @@
     <button class="submenu-btn" onclick="switchDashTab('mareas')">
         <i class="fa-solid fa-moon"></i> Mareas
     </button>
-    <button class="submenu-btn" onclick="switchDashTab('ais')">
+    {% if has_ais %}<button class="submenu-btn" onclick="switchDashTab('ais')">
         <i class="fa-solid fa-ship"></i> AIS
-    </button>
+    </button>{% endif %}
     <button class="submenu-btn" onclick="switchDashTab('alertas')">
         <i class="fa-solid fa-triangle-exclamation"></i> Alertas
     </button>
@@ -154,7 +154,7 @@
 <!-- PANEL MAPA -->
 <div class="panel hidden" id="panel-mapa" style="position:relative;padding:0;overflow:hidden;flex:1;min-width:0">
     <div class="map-controls" id="map-controls">
-        <label class="map-toggle"><input type="checkbox" id="toggle-ais" onchange="toggleMapLayer('ais')"> 🚢 Buques AIS</label>
+        {% if has_ais %}<label class="map-toggle"><input type="checkbox" id="toggle-ais" onchange="toggleMapLayer('ais')"> 🚢 Buques AIS</label>{% endif %}
         <label class="map-toggle"><input type="checkbox" id="toggle-alertas" onchange="toggleMapLayer('alertas')"> ⚠️ Alertas</label>
         <label class="map-toggle"><input type="checkbox" checked id="toggle-waypoints" onchange="toggleMapLayer('waypoints')"> 📍 Waypoints</label>
         <hr style="border-color:rgba(255,255,255,0.07);margin:0.4rem 0">
@@ -217,7 +217,7 @@
             <div class="settings-row"><span>Versión</span><span style="color:rgba(255,255,255,0.35)">1.0.0</span></div>
             <div class="settings-row"><span>Clima</span><span style="color:rgba(255,255,255,0.35)">Open-Meteo</span></div>
             <div class="settings-row"><span>Alertas</span><span style="color:rgba(255,255,255,0.35)">AEMET OpenData</span></div>
-            <div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISHub</span></div>
+            {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISHub</span></div>{% endif %}
             <div class="settings-row">
                 <span>Apoya el proyecto</span>
                 <a href="https://ko-fi.com/veellab" target="_blank" style="color:#ff5e5b;font-size:0.8rem">Ko-fi ♥</a>

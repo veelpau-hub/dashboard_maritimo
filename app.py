@@ -371,7 +371,8 @@ def index():
     datos = get_datos_maritimos()
     prefs = get_preferencias()
     mapbox_key = os.environ.get('MAPBOX_KEY', '')
-    return render_template('index.html', datos=datos, prefs=prefs, mapbox_key=mapbox_key)
+    return render_template('index.html', datos=datos, prefs=prefs,
+                           mapbox_key=mapbox_key, has_ais=bool(AISHUB_USER))
 
 @app.route('/api/datos')
 def api_datos():
