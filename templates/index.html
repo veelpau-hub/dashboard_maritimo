@@ -125,6 +125,7 @@
         <div class="card-metrica widget" data-widget="presion">
             <div id="presion-container"></div>
             <span class="metrica-sub">Presión atmosférica</span>
+            <div id="presion-trend-badge" style="display:none"></div>
         </div>
 
         <div class="card-metrica widget" data-widget="visibilidad">
@@ -171,6 +172,7 @@
         <label class="map-toggle"><input type="checkbox" id="toggle-alertas" onchange="toggleMapLayer('alertas')"> ⚠️ Alertas</label>
         <label class="map-toggle"><input type="checkbox" checked id="toggle-waypoints" onchange="toggleMapLayer('waypoints')"> 📍 Waypoints</label>
         <label class="map-toggle"><input type="checkbox" checked id="toggle-roz" onchange="toggleMapLayer('roz')"> 🚫 Zona ROZ</label>
+        <label class="map-toggle"><input type="checkbox" id="toggle-wind" onchange="toggleMapLayer('wind')"> 💨 Viento</label>
         <hr style="border-color:rgba(255,255,255,0.07);margin:0.4rem 0">
         <label class="map-toggle"><input type="checkbox" id="toggle-satellite" onchange="toggleMapStyle()"> 🛰 Satélite</label>
     </div>
@@ -263,6 +265,7 @@
     const presionValor = {{ datos.presion }};
     const visibilidadValor = {{ datos.visibilidad }};
     const tempAguaValor = {{ datos.temp_agua or 'null' }};
+    window.vientoKmh = {{ datos.viento_kmh }};
 </script>
 <script src="/static/js/widgets.js"></script>
 <script src="/static/js/main.js"></script>

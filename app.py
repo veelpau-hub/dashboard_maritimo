@@ -117,6 +117,38 @@ def save_preferencias(usuario, widgets):
     conn.commit()
     conn.close()
 
+# --- PRESION TREND ---
+_presion_history = []  # list of (timestamp, hPa) — last 6 readings
+_PRESION_TREND_MAX = 6
+
+def _update_presion_history(presion):
+    """Store pressure reading and compute trend."""
+    import time as _time
+    _presion_history.append((_time.time(), presion))
+    if len(_presion_history) > _PRESION_TREND_MAX:
+        _presion_history.pop(0)
+
+def get_presion_trend():
+    """Returns trend: 'subiendo', 'bajando', 'estable' and change rate hPa/h."""
+    if len(_presion_history) < 2:
+        return {'trend': 'estable', 'delta_h': 0.0, 'alert': False}
+    oldest_ts, oldest_val = _presion_history[0]
+    newest_ts, newest_val = _presion_history[-1]
+    hours = (newest_ts - oldest_ts) / 3600
+    if hours < 0.01:
+        return {'trend': 'estable', 'delta_h': 0.0, 'alert': False}
+    delta_h = (newest_val - oldest_val) / hours
+    if delta_h > 1.0:
+        trend = 'subiendo'
+    elif delta_h < -1.0:
+        trend = 'bajando'
+    else:
+        trend = 'estable'
+    # Storm alert: pressure < 1000 hPa OR rapidly falling (> 3 hPa/h)
+    alert = newest_val < 1000 or delta_h < -3.0
+    return {'trend': trend, 'delta_h': round(delta_h, 2), 'alert': alert,
+            'current': newest_val}
+
 # --- CACHE DE DATOS ---
 _cache = {}
 _cache_time = 0
@@ -213,6 +245,9 @@ def get_datos_maritimos():
         'temp_agua': temp_agua,
         'prediccion': prediccion,
     }
+    # Track pressure history for trend
+    _update_presion_history(round(current['surface_pressure'], 1))
+    _cache['presion_trend'] = get_presion_trend()
     _cache_time = time.time()
     return _cache
 
@@ -677,6 +712,10 @@ def api_dashboard(tab):
     except Exception as e:
         logging.error(f'Dashboard {tab}: {e}')
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/presion_trend')
+def api_presion_trend():
+    return jsonify(get_presion_trend())
 
 @app.route('/debug')
 def debug():

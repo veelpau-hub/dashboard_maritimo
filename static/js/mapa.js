@@ -9,6 +9,84 @@ const mapa = new mapboxgl.Map({
 window.mapa = mapa;
 let mapLayersReady = false;
 
+// =================== WIND PARTICLE ANIMATION ===================
+let windCanvas = null, windCtx = null, windAnim = null;
+let windActive = false;
+let windParticles = [];
+const WIND_PARTICLE_COUNT = 180;
+let windSpeed = 0, windDirDeg = 0;  // populated from datos
+
+function initWindCanvas() {
+    const mapContainer = document.getElementById('mapa');
+    if (!mapContainer) return;
+    windCanvas = document.createElement('canvas');
+    windCanvas.id = 'wind-canvas';
+    windCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:5;opacity:0.65';
+    windCanvas.width = mapContainer.offsetWidth;
+    windCanvas.height = mapContainer.offsetHeight;
+    mapContainer.appendChild(windCanvas);
+    windCtx = windCanvas.getContext('2d');
+    // Init particles
+    for (let i = 0; i < WIND_PARTICLE_COUNT; i++) {
+        windParticles.push({
+            x: Math.random() * windCanvas.width,
+            y: Math.random() * windCanvas.height,
+            age: Math.random() * 60,
+            maxAge: 40 + Math.random() * 60,
+        });
+    }
+}
+
+function animateWind() {
+    if (!windCtx || !windActive) return;
+    const W = windCanvas.width, H = windCanvas.height;
+    // Fade trail
+    windCtx.fillStyle = 'rgba(10,15,30,0.18)';
+    windCtx.fillRect(0, 0, W, H);
+    // Convert wind direction (meteorological: from N clockwise) to canvas vector
+    const rad = (windDirDeg + 180) * Math.PI / 180;
+    const speedFactor = Math.min(6, windSpeed / 8);  // cap speed
+    const vx = Math.sin(rad) * speedFactor;
+    const vy = -Math.cos(rad) * speedFactor;  // canvas Y is inverted
+    // Color based on speed
+    const hue = windSpeed < 15 ? 180 : windSpeed < 25 ? 40 : 0;
+    windCtx.strokeStyle = `hsla(${hue},90%,70%,0.7)`;
+    windCtx.lineWidth = 1;
+    windParticles.forEach(p => {
+        windCtx.beginPath();
+        windCtx.moveTo(p.x, p.y);
+        p.x += vx + (Math.random() - 0.5) * 0.5;
+        p.y += vy + (Math.random() - 0.5) * 0.5;
+        windCtx.lineTo(p.x, p.y);
+        windCtx.stroke();
+        p.age++;
+        // Reset when out of bounds or aged out
+        if (p.age > p.maxAge || p.x < 0 || p.x > W || p.y < 0 || p.y > H) {
+            p.x = Math.random() * W;
+            p.y = Math.random() * H;
+            p.age = 0;
+            p.maxAge = 40 + Math.random() * 60;
+        }
+    });
+    windAnim = requestAnimationFrame(animateWind);
+}
+
+function toggleWindAnimation() {
+    windActive = document.getElementById('toggle-wind')?.checked || false;
+    if (!windCanvas) initWindCanvas();
+    if (windActive) {
+        windCanvas.style.display = 'block';
+        animateWind();
+    } else {
+        cancelAnimationFrame(windAnim);
+        windCanvas.style.display = 'none';
+    }
+}
+
+// =================== AIS HISTORY ===================
+let aisHistoryData = {};  // mmsi -> [{lat,lon,ts}]
+
+// =================== MAP INIT ===================
 mapa.on('load', () => {
     mapa.setPaintProperty('water', 'fill-color', '#0a2a3a');
 
@@ -53,17 +131,54 @@ mapa.on('load', () => {
         paint:{'circle-radius':6,'circle-color':'#f59e0b',
             'circle-stroke-width':1.5,'circle-stroke-color':'white','circle-opacity':0.9}});
 
+    // AIS history trail source
+    mapa.addSource('ais-trail-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+    mapa.addLayer({id:'ais-trail', type:'line', source:'ais-trail-src',
+        layout:{visibility:'none'},
+        paint:{'line-color':'#f59e0b','line-width':1.5,'line-opacity':0.5,
+            'line-dasharray':[2,2]}});
+
     mapa.on('click','ais-layer', e => {
         const p = e.features[0].properties;
+        const mmsi = p.mmsi;
+        const hist = aisHistoryData[mmsi] || [];
+        // Show trail on click
+        if (hist.length > 1) {
+            const coords = hist.map(h => [h.lon, h.lat]);
+            mapa.getSource('ais-trail-src').setData({type:'FeatureCollection', features:[{
+                type:'Feature', geometry:{type:'LineString', coordinates:coords}
+            }]});
+            mapa.setLayoutProperty('ais-trail','visibility','visible');
+        }
+        // Sanitize for popup display (no innerHTML injection)
+        const safeName = String(p.name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const safeType = String(p.type||'-').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const safeSpeed = p.speed != null ? parseFloat(p.speed).toFixed(1) + ' kt' : '-';
+        const safeCourse = p.course != null ? parseFloat(p.course).toFixed(0) + '°' : '-';
+        const safeMmsi = String(mmsi||'').replace(/[^0-9]/g,'');
         new mapboxgl.Popup().setLngLat(e.lngLat)
-            .setHTML(`<strong>${p.name}</strong><br>Tipo: ${p.type}<br>Velocidad: ${p.speed} kt<br>Rumbo: ${p.course}°`)
+            .setHTML(`<strong>${safeName}</strong><br>Tipo: ${safeType}<br>Vel: ${safeSpeed} | Rumbo: ${safeCourse}<br>
+                <a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${safeMmsi}" target="_blank" style="color:#4AC8E8">Ver en MarineTraffic</a>`)
             .addTo(mapa);
     });
     mapa.on('mouseenter','ais-layer',()=>mapa.getCanvas().style.cursor='pointer');
     mapa.on('mouseleave','ais-layer',()=>mapa.getCanvas().style.cursor='');
 
+    // Coordinate display on hover
+    const coordDisplay = document.createElement('div');
+    coordDisplay.id = 'map-coords';
+    coordDisplay.style.cssText = 'position:absolute;bottom:8px;right:8px;background:rgba(13,21,32,0.85);color:rgba(255,255,255,0.5);font-size:0.65rem;padding:3px 8px;border-radius:5px;pointer-events:none;z-index:10';
+    document.getElementById('panel-mapa').appendChild(coordDisplay);
+    mapa.on('mousemove', e => {
+        coordDisplay.textContent = `${e.lngLat.lat.toFixed(4)}°N  ${Math.abs(e.lngLat.lng).toFixed(4)}°W`;
+    });
+
     mapa.addControl(new mapboxgl.NavigationControl(),'top-right');
     mapLayersReady = true;
+
+    // Set wind params from page data if available
+    if (typeof vientoGrados !== 'undefined') windDirDeg = vientoGrados;
+    if (typeof window.vientoKmh !== 'undefined') windSpeed = window.vientoKmh;
 });
 
 function initMapLayers() {
@@ -73,13 +188,30 @@ function initMapLayers() {
 
 function loadAISLayer() {
     if (!mapLayersReady) return;
-    fetch('/api/dashboard/ais').then(r=>r.json()).then(data => {
-        const features = (data.vessels||[])
+    fetch('/api/dashboard/vigilancia').then(r=>r.json()).then(data => {
+        const vessels = data.vessels || [];
+        const features = vessels
             .filter(v => v.lat && v.lon)
             .map(v => ({type:'Feature',
                 geometry:{type:'Point',coordinates:[v.lon,v.lat]},
-                properties:{name:v.name,type:v.type,speed:v.speed,course:v.course}}));
+                properties:{
+                    name:v.name, type:v.type, speed:v.speed,
+                    course:v.course, mmsi:v.mmsi,
+                    amenaza:v.amenaza
+                }}));
         mapa.getSource('ais-src').setData({type:'FeatureCollection',features});
+        // Store history for trail display
+        vessels.forEach(v => {
+            if (v.mmsi && v.history) aisHistoryData[v.mmsi] = v.history;
+        });
+        // Color by threat level
+        mapa.setPaintProperty('ais-layer','circle-color',[
+            'match', ['get','amenaza'],
+            'ROJO','#ef4444',
+            'AMARILLO','#f59e0b',
+            'VERDE','#22c55e',
+            '#f59e0b'
+        ]);
     }).catch(()=>{});
 }
 
@@ -89,6 +221,9 @@ function toggleMapLayer(layer) {
         const vis = document.getElementById('toggle-ais')?.checked ? 'visible' : 'none';
         mapa.setLayoutProperty('ais-layer','visibility',vis);
         if (vis==='visible') loadAISLayer();
+        else {
+            mapa.setLayoutProperty('ais-trail','visibility','none');
+        }
     }
     if (layer==='waypoints') {
         const show = document.getElementById('toggle-waypoints')?.checked;
@@ -100,6 +235,9 @@ function toggleMapLayer(layer) {
         ['zona-radio-fill','zona-radio'].forEach(id => {
             if (mapa.getLayer(id)) mapa.setLayoutProperty(id,'visibility',vis);
         });
+    }
+    if (layer==='wind') {
+        toggleWindAnimation();
     }
 }
 

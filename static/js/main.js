@@ -117,6 +117,43 @@ async function guardarPrefs() {
 
 aplicarPrefs();
 
+// --- PRESION TREND ---
+function updatePresionTrend() {
+    fetch('/api/presion_trend')
+        .then(r => r.json())
+        .then(d => {
+            const badge = document.getElementById('presion-trend-badge');
+            if (!badge) return;
+            const icons = {subiendo:'↑', bajando:'↓', estable:'→'};
+            const colors = {subiendo:'#22c55e', bajando:'#ef4444', estable:'rgba(255,255,255,0.4)'};
+            const icon = icons[d.trend] || '→';
+            const color = colors[d.trend] || '#aaa';
+            badge.style.display = 'block';
+            badge.style.fontSize = '0.7rem';
+            badge.style.color = color;
+            badge.textContent = `${icon} ${d.trend}`;
+            if (d.delta_h) badge.textContent += ` (${d.delta_h > 0 ? '+' : ''}${d.delta_h} hPa/h)`;
+            // Storm banner
+            if (d.alert) {
+                let banner = document.getElementById('storm-alert-banner');
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'storm-alert-banner';
+                    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ef4444;color:white;text-align:center;font-size:0.8rem;font-weight:700;padding:6px;z-index:999;cursor:pointer';
+                    banner.onclick = () => banner.remove();
+                    document.body.prepend(banner);
+                }
+                const alertMsg = d.current < 1000
+                    ? `ALERTA: Presion muy baja ${d.current} hPa - Posible temporal. Haz clic para cerrar.`
+                    : `ALERTA: Presion cayendo rapido (${d.delta_h} hPa/h) - Deterioro inminente.`;
+                banner.textContent = alertMsg;
+            }
+        })
+        .catch(() => {});
+}
+updatePresionTrend();
+setInterval(updatePresionTrend, 300000);
+
 // --- SETTINGS ---
 let tempUnit = localStorage.getItem('tempUnit') || 'c';
 let windUnit = localStorage.getItem('windUnit') || 'kmh';
