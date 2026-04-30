@@ -360,13 +360,23 @@ function renderPrediccion(data, el) {
     const days=(data.days||[]).map(d=>{
         const nombre=dias[new Date(d.date+'T12:00:00').getDay()];
         const icon=WX_ICONS[d.code]||'🌡';
+        // Precip bar
+        const precip = d.precip || 0;
+        const precipBar = precip > 0
+            ? `<div style="width:100%;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin:3px 0">
+                <div style="width:${Math.min(100,(precip/20)*100)}%;height:100%;background:#4AC8E8;border-radius:2px"></div>
+               </div><div class="forecast-day-sub" style="color:#4AC8E8">${precip.toFixed(1)}mm</div>`
+            : '<div class="forecast-day-sub" style="color:rgba(255,255,255,0.2)">Sin lluvia</div>';
         return `<div class="forecast-day">
             <div class="forecast-day-name">${nombre}</div>
             <div class="forecast-day-icon">${icon}</div>
             <div class="forecast-day-temp">${d.temp_max?.toFixed(0)}°</div>
             <div class="forecast-day-sub">${d.temp_min?.toFixed(0)}° mín</div>
             <div class="forecast-day-sub" style="margin-top:.3rem">💨 ${d.wind_max?.toFixed(0)} km/h</div>
-            ${d.wave_max!=null?`<div class="forecast-day-sub">🌊 ${d.wave_max?.toFixed(1)}m</div>`:''}</div>`;
+            ${d.wave_max!=null?`<div class="forecast-day-sub">🌊 ${d.wave_max?.toFixed(1)}m</div>`:''}
+            ${precip != null ? precipBar : ''}
+            <div class="forecast-day-sub" style="font-size:0.58rem;color:rgba(255,255,255,0.2);margin-top:2px">🌅${esc(d.sunrise||'')} 🌇${esc(d.sunset||'')}</div>
+            </div>`;
     }).join('');
     el.innerHTML=`<p class="dash-section-title">Predicción 7 días</p><div class="forecast-grid">${days}</div>`;
 }
@@ -514,12 +524,28 @@ function renderVigilancia(data, el) {
         <div class="alert-desc">Radio ${data.roz.radius_nm}nm desde ${data.roz.lat}°N ${Math.abs(data.roz.lon)}°W. Activa en mapa (toggle "Zona ROZ").</div>
     </div>` : '';
 
+    let vigVessels = vessels;
+    const filterControls = vessels.length ? `
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem">
+            <select id="vig-filter-threat" onchange="filterVigTable()" style="background:#0d1520;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.7);padding:4px 8px;font-size:0.73rem">
+                <option value="">Todas las amenazas</option>
+                <option value="ROJO">Solo ROJO</option>
+                <option value="AMARILLO">Solo AMARILLO</option>
+                <option value="VERDE">Solo VERDE</option>
+            </select>
+            <select id="vig-filter-status" onchange="filterVigTable()" style="background:#0d1520;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.7);padding:4px 8px;font-size:0.73rem">
+                <option value="">Todos los estados</option>
+                <option value="EN MOVIMIENTO">En movimiento</option>
+                <option value="FONDEADO">Fondeados</option>
+            </select>
+        </div>` : '';
+
     let vesselRows = '';
     if (!vessels.length) {
         vesselRows = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:0.5rem 0">Sin buques en el área de vigilancia.</p>';
     } else {
-        vesselRows = vessels.map(v => `
-            <tr>
+        const rowsHtml = vessels.map(v => `
+            <tr data-threat="${esc(v.amenaza)}" data-status="${esc(v.estado)}">
                 <td>${esc(v.name)}</td>
                 <td>${esc(v.type_name||v.type||'-')}</td>
                 <td>${threatBadge(v.amenaza)}</td>
@@ -527,9 +553,9 @@ function renderVigilancia(data, el) {
                 <td>${v.speed != null ? esc(v.speed.toFixed(1)) + ' kt' : '-'}</td>
                 <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
             </tr>`).join('');
-        vesselRows = `<div style="overflow-x:auto"><table class="ais-table">
+        vesselRows = `${filterControls}<div style="overflow-x:auto"><table class="ais-table" id="vig-table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Amenaza</th><th>Estado</th><th>SOG</th><th>MMSI</th></tr></thead>
-            <tbody>${vesselRows}</tbody></table></div>`;
+            <tbody id="vig-tbody">${rowsHtml}</tbody></table></div>`;
     }
 
     let oorSection = '';
@@ -547,6 +573,19 @@ function renderVigilancia(data, el) {
         ${rozInfo}${summary}
         <p class="dash-section-title">Seguimiento multi-buque</p>
         ${vesselRows}${oorSection}`;
+}
+
+function filterVigTable() {
+    const threat = document.getElementById('vig-filter-threat')?.value || '';
+    const status = document.getElementById('vig-filter-status')?.value || '';
+    const tbody = document.getElementById('vig-tbody');
+    if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(row => {
+        const rowThreat = row.dataset.threat || '';
+        const rowStatus = row.dataset.status || '';
+        const show = (!threat || rowThreat === threat) && (!status || rowStatus === status);
+        row.style.display = show ? '' : 'none';
+    });
 }
 
 // =================== PESCA ===================

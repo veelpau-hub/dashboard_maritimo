@@ -154,6 +154,35 @@ function updatePresionTrend() {
 updatePresionTrend();
 setInterval(updatePresionTrend, 300000);
 
+// --- AUTO-REFRESH OVERVIEW (every 5 min) ---
+function autoRefreshOverview() {
+    fetch('/api/datos')
+        .then(r => r.json())
+        .then(d => {
+            if (!d || d.error) return;
+            // Update temperature
+            if (tempUnit === 'f') {
+                document.getElementById('temp-valor').textContent = Math.round(d.temperatura_c * 9/5 + 32) + '°';
+                document.getElementById('sensacion').textContent = Math.round(d.sensacion_c * 9/5 + 32) + '°F';
+            } else {
+                document.getElementById('temp-valor').textContent = d.temperatura_c + '°';
+                document.getElementById('sensacion').textContent = d.sensacion_c + '°C';
+            }
+            // Show last updated badge
+            let badge = document.getElementById('auto-refresh-badge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'auto-refresh-badge';
+                badge.style.cssText = 'font-size:0.6rem;color:rgba(255,255,255,0.2);position:absolute;bottom:6px;right:10px';
+                const overview = document.getElementById('panel-overview');
+                if (overview) { overview.style.position = 'relative'; overview.appendChild(badge); }
+            }
+            badge.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
+        })
+        .catch(() => {});
+}
+setInterval(autoRefreshOverview, 300000);
+
 // --- SETTINGS ---
 let tempUnit = localStorage.getItem('tempUnit') || 'c';
 let windUnit = localStorage.getItem('windUnit') || 'kmh';
