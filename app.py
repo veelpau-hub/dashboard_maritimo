@@ -12,7 +12,9 @@ load_dotenv()
 urllib3.disable_warnings()
 
 AEMET_API_KEY = os.getenv('AEMET_API_KEY', '')
-AISHUB_USER = os.getenv('AISHUB_USER', '')
+
+import ais_stream
+ais_stream.start()
 
 
 COASTAL_POINTS = [
@@ -277,25 +279,8 @@ def fetch_mareas():
     }
 
 def fetch_ais():
-    if not AISHUB_USER:
-        return {'vessels': [], 'note': 'Configura AISHUB_USER en .env'}
-    try:
-        r = requests.get('http://data.aishub.net/ws.php', params={
-            'username': AISHUB_USER, 'format': '1', 'output': 'json',
-            'compress': '0', 'latmin': '36.3', 'latmax': '37.0',
-            'lonmin': '-7.0', 'lonmax': '-5.8'
-        }, timeout=10).json()
-        vessels = []
-        if isinstance(r, list) and len(r) > 1:
-            for v in r[1]:
-                vessels.append({
-                    'mmsi': v.get('MMSI'), 'name': v.get('NAME', 'Desconocido'),
-                    'type': v.get('TYPE', '-'), 'lat': v.get('LATITUDE'),
-                    'lon': v.get('LONGITUDE'), 'speed': v.get('SOG'), 'course': v.get('COG'),
-                })
-        return {'vessels': vessels}
-    except Exception as e:
-        return {'vessels': [], 'error': str(e)}
+    vessels = ais_stream.get_vessels()
+    return {'vessels': vessels, 'count': len(vessels)}
 
 def fetch_alertas():
     if not AEMET_API_KEY:

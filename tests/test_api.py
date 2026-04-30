@@ -42,11 +42,12 @@ def test_dashboard_prediccion(client, monkeypatch):
     assert r.status_code == 200
     assert r.get_json()['days'][0]['temp_max'] == 25
 
-def test_dashboard_ais_no_user(client, monkeypatch):
-    monkeypatch.setattr(flask_app, 'AISHUB_USER', '')
+def test_dashboard_ais(client, monkeypatch):
+    import ais_stream
+    monkeypatch.setattr(ais_stream, 'get_vessels', lambda: [])
     flask_app._dash_cache.clear()
     r = client.get('/api/dashboard/ais')
     assert r.status_code == 200
     d = r.get_json()
     assert d['vessels'] == []
-    assert 'note' in d
+    assert 'count' in d
