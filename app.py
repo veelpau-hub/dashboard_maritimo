@@ -253,6 +253,41 @@ def get_datos_maritimos():
 
 init_db()
 
+def _init_presion_history():
+    """Bootstrap pressure history from last 24h of Open-Meteo data at startup."""
+    try:
+        import time as _time
+        from datetime import datetime as _dt
+        r = requests.get('https://api.open-meteo.com/v1/forecast', params={
+            'latitude': 36.62, 'longitude': -6.35,
+            'hourly': 'surface_pressure',
+            'timezone': 'Europe/Madrid', 'past_days': 1, 'forecast_days': 1
+        }, verify=False, timeout=8).json()
+        times = r['hourly']['time']
+        pressures = r['hourly']['surface_pressure']
+        now_ts = _time.time()
+        # Take readings at 6h intervals (last 24h)
+        step = 6
+        for i in range(0, min(len(times), 48), step):
+            try:
+                ts = _dt.fromisoformat(times[i])
+                import datetime as _dtmod
+                ts_utc = ts.replace(tzinfo=_dtmod.timezone.utc).timestamp() if ts.tzinfo is None else ts.timestamp()
+                if ts_utc <= now_ts:
+                    _presion_history.append((ts_utc, pressures[i]))
+            except Exception:
+                pass
+        # Keep last 6
+        while len(_presion_history) > _PRESION_TREND_MAX:
+            _presion_history.pop(0)
+        logging.info(f"Pressure history bootstrapped: {len(_presion_history)} readings")
+    except Exception as e:
+        logging.warning(f"Pressure history init failed: {e}")
+
+# Initialize pressure history in background thread
+import threading as _threading
+_threading.Thread(target=_init_presion_history, daemon=True, name='presion-init').start()
+
 # --- DASHBOARD CACHE ---
 _dash_cache = {}
 _dash_cache_time = {}

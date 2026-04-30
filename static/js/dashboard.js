@@ -79,15 +79,33 @@ function renderMeteo(data, el) {
     const horas = (data.time||[]).filter((_,i) => i%step===0).map(t => t.substr(11,5));
     const temps = (data.temp||[]).filter((_,i) => i%step===0);
     const winds = (data.wind||[]).filter((_,i) => i%step===0);
+    const precips = (data.precip||[]).filter((_,i) => i%step===0);
+    const pressures = (data.pressure||[]).filter((_,i) => i%step===0);
+
+    // Current conditions summary
+    const curTemp = temps[0] != null ? temps[0].toFixed(1) : '-';
+    const curWind = winds[0] != null ? winds[0].toFixed(0) : '-';
+    const curPress = pressures[0] != null ? pressures[0].toFixed(0) : '-';
+    const totalPrecip = precips.reduce((a,b) => a + (b||0), 0).toFixed(1);
+
     el.innerHTML = `
-        <p class="dash-section-title">Temperatura y viento — 7 días</p>
-        <div class="dash-chart-container" id="chart-temp" style="height:160px"></div>
-        <div class="dash-chart-container" id="chart-wind" style="height:140px"></div>`;
+        <p class="dash-section-title">Meteorología — 7 días</p>
+        <div class="dash-grid" style="margin-bottom:0.75rem">
+            <div class="dash-card"><div class="dash-card-label">Temperatura</div><div class="dash-card-value">${curTemp}°C</div></div>
+            <div class="dash-card"><div class="dash-card-label">Viento</div><div class="dash-card-value">${curWind} km/h</div></div>
+            <div class="dash-card"><div class="dash-card-label">Presión</div><div class="dash-card-value">${curPress} hPa</div></div>
+            <div class="dash-card"><div class="dash-card-label">Precip. total</div><div class="dash-card-value">${totalPrecip} mm</div></div>
+        </div>
+        <div class="dash-chart-container" id="chart-temp" style="height:140px"></div>
+        <div class="dash-chart-container" id="chart-wind" style="height:120px"></div>
+        <div class="dash-chart-container" id="chart-press" style="height:100px"></div>`;
     requestAnimationFrame(() => {
         drawLineChart('#chart-temp', horas, temps, '°C', '#4AC8E8');
         drawLineChart('#chart-wind', horas, winds, 'km/h', '#f59e0b');
+        drawLineChart('#chart-press', horas, pressures, 'hPa', '#a78bfa');
         observeChart('#chart-temp');
         observeChart('#chart-wind');
+        observeChart('#chart-press');
     });
 }
 
