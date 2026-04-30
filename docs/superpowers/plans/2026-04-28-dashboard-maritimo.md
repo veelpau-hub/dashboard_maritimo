@@ -29,7 +29,7 @@
 **Files:**
 - Modify: `app.py`
 
-- [ ] **Step 1: Remove duplicate route and fix init_db**
+- [x] **Step 1: Remove duplicate route and fix init_db**
 
 `app.py` has two `@app.route('/')` definitions. The first (around line 93) is missing `mapbox_key`. Remove that first block entirely. Move `init_db()` to module level (before the first route) so it runs under Gunicorn.
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 ```
 
-- [ ] **Step 2: Verify locally**
+- [x] **Step 2: Verify locally**
 
 ```bash
 cd /Users/pauvidal/Python/dashboard-maritimo
