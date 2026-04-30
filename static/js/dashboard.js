@@ -208,6 +208,19 @@ function drawSwellRose(selector, dirDeg, heightM) {
 }
 
 function renderMareas(data, el) {
+    const coef = data.coeficiente;
+    const coefColor = coef == null ? 'rgba(255,255,255,0.3)'
+        : coef >= 90 ? '#ef4444' : coef >= 70 ? '#f59e0b' : coef >= 50 ? '#22c55e' : '#4AC8E8';
+    const coefLabel = coef == null ? '?'
+        : coef >= 90 ? 'Viva máxima' : coef >= 70 ? 'Viva' : coef >= 50 ? 'Media' : 'Muerta';
+
+    const coefCard = coef != null ? `<div class="dash-card" style="text-align:center">
+        <div class="dash-card-label">Coeficiente</div>
+        <div class="dash-card-value" style="color:${coefColor}">${coef}</div>
+        <div class="dash-card-sub" style="color:${coefColor}">${coefLabel}</div>
+        <div class="dash-card-sub">/120</div>
+    </div>` : '';
+
     const rows = (data.extremes||[]).map(e => `
         <div class="dash-card" style="flex-direction:row;align-items:center;gap:1rem;display:flex">
             <span style="font-size:1.5rem;color:${e.type==='pleamar'?'#4AC8E8':'#f59e0b'}">${e.type==='pleamar'?'↑':'↓'}</span>
@@ -222,7 +235,7 @@ function renderMareas(data, el) {
         : '';
     el.innerHTML = `
         <p class="dash-section-title">Mareas — hoy</p>
-        <div class="dash-grid">${rows}</div>
+        <div class="dash-grid">${coefCard}${rows}</div>
         <div class="dash-chart-container" id="chart-mareas" style="height:140px"></div>
         ${note}`;
     requestAnimationFrame(() => {

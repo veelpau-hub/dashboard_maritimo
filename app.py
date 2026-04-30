@@ -371,6 +371,23 @@ def fetch_oleaje(lat=36.62, lon=-6.35):
         'temp_agua': r['hourly']['sea_surface_temperature'],
     }
 
+def _calc_tidal_coefficient(extremes):
+    """Calculate tidal coefficient (coeficiente de marea) 0-120.
+    Based on tidal range: range_max * 100 / spring_range (approx 2.8m for Rota area).
+    Coefficient 120 = máxima viva, 45 = mínima muerta.
+    """
+    try:
+        highs = [e['height'] for e in extremes if e.get('type') == 'pleamar' and e.get('height')]
+        lows = [e['height'] for e in extremes if e.get('type') == 'bajamar' and e.get('height')]
+        if not highs or not lows:
+            return None
+        rng = max(highs) - min(lows)
+        spring_range = 2.8  # Rota spring tidal range approx
+        coef = min(120, max(10, round(rng / spring_range * 95)))
+        return coef
+    except Exception:
+        return None
+
 def fetch_mareas():
     try:
         r = requests.get(
@@ -379,16 +396,23 @@ def fetch_mareas():
             timeout=8, verify=False
         )
         if r.status_code == 200:
-            return r.json()
+            data = r.json()
+            extremes = data.get('extremes', [])
+            coef = _calc_tidal_coefficient(extremes)
+            data['coeficiente'] = coef
+            return data
     except Exception:
         pass
+    # Fallback with estimated data
+    extremes = [
+        {'type': 'pleamar', 'time': '06:30', 'height': 2.8},
+        {'type': 'bajamar', 'time': '12:45', 'height': 0.4},
+        {'type': 'pleamar', 'time': '19:10', 'height': 2.6},
+    ]
     return {
         'source': 'estimado',
-        'extremes': [
-            {'type': 'pleamar', 'time': '06:30', 'height': 2.8},
-            {'type': 'bajamar', 'time': '12:45', 'height': 0.4},
-            {'type': 'pleamar', 'time': '19:10', 'height': 2.6},
-        ]
+        'extremes': extremes,
+        'coeficiente': _calc_tidal_coefficient(extremes),
     }
 
 def fetch_ais():
