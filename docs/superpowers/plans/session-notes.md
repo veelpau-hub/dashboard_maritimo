@@ -138,6 +138,42 @@ Frontend:
 - Categoría de energía de ola (calma/moderado/fuerte) calculada como H²×T
 - Período de ola con animación pulse sincronizada al período real (CSS keyframes variables)
 
+### Iteración 5 (2026-04-30, ~20:17 UTC)
+
+#### Waypoints manager (Navionics-style)
+- Backend: tabla SQLite `waypoints` (id, nombre, lat, lon, descripcion, color, creado)
+- API REST: GET /api/waypoints, POST /api/waypoints, DELETE /api/waypoints/{id}
+- Frontend: panel inline en map-controls para añadir waypoint haciendo clic en el mapa
+- Marcadores de colores personalizados en Mapbox
+- Toggle para mostrar/ocultar waypoints de usuario
+- 2 nuevos tests: test_waypoints_crud, test_waypoints_invalid_coords
+
+### Iteración 6 (2026-04-30, ~20:18 UTC)
+
+#### PWA offline support
+- Service Worker: cache-first para assets estáticos, network-first con fallback para API
+- Web App Manifest: nombre, short_name, colores, orientación
+- Ruta Flask /sw.js con header Service-Worker-Allowed
+- Meta tags PWA en HTML (theme-color, description)
+- El dashboard es ahora instalable como app en móvil
+
+### Iteración 7 (2026-04-30, ~20:20 UTC)
+
+#### AIS + Vigilancia mejorados
+- 30+ códigos AIS tipo → nombres en español (pesca, cargo, tanquero, SAR, práctico...)
+- Columna "Tipo" en tabla Vigilancia con nombre legible
+- Links a MarineTraffic por MMSI en tabla Vigilancia
+- AQI gradient bar: barra de colores (verde→rojo) para visualización del índice
+
+### Iteración 8 (2026-04-30, ~20:21 UTC)
+
+#### Tab "Hoy" — Ventana meteorológica 24h
+- Nueva función fetch_hoy: combina Open-Meteo forecast + marine por hora del día actual
+- Score 0-10 por hora: viento (<15=3, <25=2, <35=1), olas (<0.8m=3, <1.5m=2, <2.5m=1), precipitación (<0.5mm=2), código climático (no mal tiempo=2)
+- renderHoy(): timeline de 24 barras con color verde/amarillo/rojo según score
+- Summary cards: horas excelentes/aceptables/malas del día
+- Nuevo sub-tab "📅 Hoy" al inicio del submenu
+
 ---
 
 ## Próximas iteraciones — Ideas pendientes
