@@ -487,17 +487,33 @@ _ais_seen_last: dict = {}  # mmsi -> {vessel info, last_ts}
 
 # AIS type codes to human readable names
 AIS_TYPE_NAMES = {
-    '20': 'Ala delta', '21': 'Aeronave', '22': 'Aeronave',
+    '20': 'Ala delta', '21': 'Aeronave', '22': 'Aeronave', '23': 'Aeronave',
+    '24': 'Aeronave', '25': 'Aeronave', '26': 'Aeronave', '27': 'Aeronave',
+    '28': 'Aeronave', '29': 'Aeronave',
     '30': 'Pesca', '31': 'Remolque', '32': 'Remolque largo',
-    '33': 'Draga', '34': 'Buceo', '35': 'Militar', '36': 'Vela',
-    '37': 'Embarcación recreo', '40': 'Alta velocidad', '41': 'Alta velocidad',
-    '42': 'Alta velocidad', '43': 'Alta velocidad', '44': 'Alta velocidad',
-    '50': 'Práctico', '51': 'SAR', '52': 'Remolcador', '53': 'Balizamiento',
-    '54': 'Anticontaminación', '55': 'Agente autoridad', '58': 'Médico',
-    '60': 'Pasaje', '61': 'Pasaje', '62': 'Pasaje', '63': 'Pasaje', '69': 'Pasaje',
-    '70': 'Carga', '71': 'Carga', '72': 'Carga', '73': 'Carga', '79': 'Carga',
-    '80': 'Tanquero', '81': 'Tanquero', '82': 'Tanquero', '83': 'Tanquero', '89': 'Tanquero',
-    '90': 'Otro', '99': 'Otro',
+    '33': 'Draga/operaciones subacuáticas', '34': 'Operaciones buceo',
+    '35': 'Buque militar', '36': 'Velero', '37': 'Embarcación recreo',
+    '38': 'Reservado', '39': 'Reservado',
+    '40': 'Alta velocidad (HSC)', '41': 'HSC - Sin IMO',
+    '42': 'HSC - DG', '43': 'HSC - Cargas peligrosas',
+    '44': 'HSC - Otras', '49': 'HSC - Sin info',
+    '50': 'Práctico', '51': 'Búsqueda y rescate (SAR)',
+    '52': 'Remolcador', '53': 'Puerto/servicio',
+    '54': 'Anticontaminación', '55': 'Agente de autoridad',
+    '56': 'Reservado', '57': 'Reservado',
+    '58': 'Embarcación médica', '59': 'Embarcación no combate SOLAS',
+    '60': 'Pasajeros', '61': 'Pasajeros - Sin IMO',
+    '62': 'Pasajeros - DG', '63': 'Pasajeros - Peligrosas',
+    '64': 'Pasajeros - Otras', '69': 'Pasajeros',
+    '70': 'Carga', '71': 'Carga - Sin IMO',
+    '72': 'Carga - DG', '73': 'Carga - Peligrosas',
+    '74': 'Carga - Otras', '79': 'Carga',
+    '80': 'Tanquero', '81': 'Tanquero - Sin IMO',
+    '82': 'Tanquero - DG', '83': 'Tanquero - Peligrosas',
+    '84': 'Tanquero - Otras', '89': 'Tanquero',
+    '90': 'Otro', '91': 'Otro', '92': 'Otro',
+    '93': 'Otro', '94': 'Otro', '95': 'Otro',
+    '96': 'Otro', '97': 'Otro', '98': 'Otro', '99': 'Otro',
 }
 
 def _ais_type_name(type_code):
@@ -970,6 +986,33 @@ def api_dashboard(tab):
 @app.route('/api/presion_trend')
 def api_presion_trend():
     return jsonify(get_presion_trend())
+
+@app.route('/api/pesca_quick')
+def api_pesca_quick():
+    """Quick pesca index for overview badge — uses cached data only, fast."""
+    try:
+        datos = get_datos_maritimos()
+        wave_h = datos.get('altura_max', 0)
+        wind_kmh = datos.get('viento_kmh', 0)
+        pressure = datos.get('presion', 1013)
+        go = wave_h <= 2.0 and wind_kmh <= 25 and pressure >= 995
+        score = 0
+        if wave_h < 1.0: score += 2
+        elif wave_h < 1.5: score += 1
+        if wind_kmh < 15: score += 2
+        elif wind_kmh < 25: score += 1
+        score += 2  # visibility ok assumed
+        score += 2  # no rain assumed
+        score += 2  # tide assumed
+        fishing_index = min(10, max(1, score))
+        return jsonify({
+            'fishing_index': fishing_index,
+            'go': go,
+            'wave_h': wave_h,
+            'wind_kmh': wind_kmh,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'fishing_index': 5, 'go': True}), 200
 
 @app.route('/api/waypoints', methods=['GET'])
 def api_get_waypoints():

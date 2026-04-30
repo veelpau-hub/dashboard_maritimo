@@ -183,6 +183,24 @@ function autoRefreshOverview() {
 }
 setInterval(autoRefreshOverview, 300000);
 
+// --- PESCA QUICK BADGE ---
+function loadPescaBadge() {
+    fetch('/api/pesca_quick')
+        .then(r => r.json())
+        .then(d => {
+            const badge = document.getElementById('pesca-badge');
+            if (!badge) return;
+            const idx = d.fishing_index || 5;
+            const color = idx <= 3 ? '#ef4444' : idx <= 6 ? '#f59e0b' : '#22c55e';
+            const goText = d.go ? 'Salir' : 'Esperar';
+            badge.innerHTML = `🎣 <span style="color:${color};font-weight:700">${idx}/10</span> · ${goText}`;
+            badge.title = `Índice de pesca: ${idx}/10. Ola: ${d.wave_h}m, Viento: ${d.wind_kmh}km/h. Clic para ver detalle.`;
+        })
+        .catch(() => {});
+}
+loadPescaBadge();
+setInterval(loadPescaBadge, 600000);
+
 // --- SETTINGS ---
 let tempUnit = localStorage.getItem('tempUnit') || 'c';
 let windUnit = localStorage.getItem('windUnit') || 'kmh';
