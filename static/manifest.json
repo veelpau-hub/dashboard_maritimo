@@ -1,0 +1,19 @@
+{
+    "name": "Dashboard Marítimo — Rota",
+    "short_name": "NavDash",
+    "description": "Dashboard meteorológico y marítimo para la Bahía de Cádiz",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0f1e",
+    "theme_color": "#0a0f1e",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%230a0f1e'/><text y='.9em' font-size='80' x='10'>⚓</text></svg>",
+            "type": "image/svg+xml",
+            "sizes": "any"
+        }
+    ],
+    "categories": ["navigation", "weather", "utilities"],
+    "lang": "es"
+}

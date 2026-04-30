@@ -882,6 +882,14 @@ def api_delete_waypoint(wp_id):
     delete_waypoint(wp_id)
     return jsonify({'ok': True})
 
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory
+    response = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
 @app.route('/debug')
 def debug():
     return jsonify({
