@@ -201,6 +201,33 @@ function loadPescaBadge() {
 loadPescaBadge();
 setInterval(loadPescaBadge, 600000);
 
+// --- BEAUFORT DESCRIPTION ---
+(function() {
+    const bfDescs = [
+        'Calma', 'Ventolina', 'Brisa muy débil', 'Brisa débil',
+        'Brisa moderada', 'Brisa fresca', 'Brisa fuerte', 'Viento fresco',
+        'Temporal', 'Temporal fuerte', 'Temporal muy fuerte', 'Borrasca', 'Huracán'
+    ];
+    const bfEl = document.querySelector('[data-widget="beaufort"] .metrica-sub');
+    if (bfEl && typeof beaufortValor !== 'undefined') {
+        const desc = bfDescs[beaufortValor] || '';
+        bfEl.textContent = `BF ${beaufortValor} · ${desc}`;
+    }
+
+    // --- SEA STATE DESCRIPTION on olas widget ---
+    const olasEl = document.querySelector('[data-widget="olas"] .metrica-sub');
+    if (olasEl && typeof olaMax !== 'undefined') {
+        const wmoDesc = olaMax < 0.1 ? 'Calma (glassy)' :
+                        olaMax < 0.5 ? 'Calma (rizada)' :
+                        olaMax < 1.25 ? 'Marejadilla' :
+                        olaMax < 2.5 ? 'Marejada' :
+                        olaMax < 4.0 ? 'Fuerza 5' :
+                        olaMax < 6.0 ? 'Gruesa' :
+                        olaMax < 9.0 ? 'Muy gruesa' : 'Enorme';
+        olasEl.textContent = `${wmoDesc} · Mín ${olaMin}m`;
+    }
+})();
+
 // --- SETTINGS ---
 let tempUnit = localStorage.getItem('tempUnit') || 'c';
 let windUnit = localStorage.getItem('windUnit') || 'kmh';
