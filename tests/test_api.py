@@ -51,3 +51,39 @@ def test_dashboard_ais(client, monkeypatch):
     d = r.get_json()
     assert d['vessels'] == []
     assert 'count' in d
+
+def test_dashboard_vigilancia(client, monkeypatch):
+    import ais_stream
+    monkeypatch.setattr(ais_stream, 'get_vessels', lambda: [])
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/vigilancia')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'vessels' in d
+    assert 'roz' in d
+    assert 'total' in d
+
+def test_dashboard_pesca(client, monkeypatch):
+    # Mock underlying data sources
+    monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {
+        'altura_max': 0.5, 'viento_kmh': 10, 'visibilidad': 10,
+        'presion': 1013, 'sunrise': '07:00', 'sunset': '20:00', 'temp_agua': 18.5,
+        'temperatura_c': 22.0, 'sensacion_c': 21.0,
+    })
+    # Stub out the fetch functions called inside fetch_pesca
+    monkeypatch.setattr(flask_app, 'fetch_mareas', lambda: {
+        'extremes': [{'type':'bajamar','time':'06:30','height':0.4},
+                     {'type':'pleamar','time':'12:45','height':2.8}]
+    })
+    monkeypatch.setattr(flask_app, 'fetch_oleaje', lambda: {
+        'time': [], 'height': [], 'direction': [], 'period': [],
+        'temp_agua': [18.5]*168,
+    })
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/pesca')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'fishing_index' in d
+    assert 'go_nogo' in d
+    assert 'moon' in d
+    assert 'species_in_season' in d

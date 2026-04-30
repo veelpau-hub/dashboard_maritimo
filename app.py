@@ -345,10 +345,283 @@ def fetch_calidad():
         'aqi': h['european_aqi'][hora],
     }
 
+# --- HISTORIAL AIS (últimas 10 posiciones por buque) ---
+_ais_history: dict = {}  # mmsi -> list of {lat,lon,ts}
+_ais_seen_last: dict = {}  # mmsi -> {vessel info, last_ts}
+
+def _classify_threat(vessel):
+    """Classify vessel threat level: ROJO/AMARILLO/VERDE"""
+    name = (vessel.get('name') or '').strip().upper()
+    vtype = str(vessel.get('type') or '').strip().upper()
+    # Military / unknown type without proper name
+    military_types = {'35', '36', '37', 'MILITARY', 'LAW ENFORCEMENT'}
+    if vtype in military_types:
+        return 'ROJO'
+    if not name or name in ('DESCONOCIDO', 'UNKNOWN', ''):
+        return 'AMARILLO'
+    if vtype in {'', '-', 'UNKNOWN', '0'}:
+        return 'AMARILLO'
+    return 'VERDE'
+
+def _vessel_status(vessel):
+    sog = vessel.get('speed')
+    if sog is None:
+        return 'DESCONOCIDO'
+    if sog > 0.5:
+        return 'EN MOVIMIENTO'
+    return 'FONDEADO'
+
+def fetch_vigilancia():
+    import time as _time
+    vessels_raw = ais_stream.get_vessels()
+    now = _time.time()
+
+    # Update history and seen_last
+    current_mmsi_set = set()
+    vessels_enriched = []
+    for v in vessels_raw:
+        mmsi = v.get('mmsi')
+        if not mmsi:
+            continue
+        current_mmsi_set.add(mmsi)
+        # Update position history (max 10)
+        if mmsi not in _ais_history:
+            _ais_history[mmsi] = []
+        if v.get('lat') and v.get('lon'):
+            hist = _ais_history[mmsi]
+            if not hist or (hist[-1]['lat'] != v['lat'] or hist[-1]['lon'] != v['lon']):
+                hist.append({'lat': v['lat'], 'lon': v['lon'], 'ts': now})
+                if len(hist) > 10:
+                    hist.pop(0)
+        _ais_seen_last[mmsi] = {**v, '_last_ts': now}
+
+        threat = _classify_threat(v)
+        status = _vessel_status(v)
+        vessels_enriched.append({
+            **v,
+            'amenaza': threat,
+            'estado': status,
+            'history': _ais_history.get(mmsi, []),
+        })
+
+    # Detect out-of-range vessels (seen before, now missing, last speed > 3kt)
+    out_of_range = []
+    for mmsi, last in _ais_seen_last.items():
+        if mmsi in current_mmsi_set:
+            continue
+        age = now - last.get('_last_ts', now)
+        if age < 1800:  # only if seen within last 30min
+            sog = last.get('speed') or 0
+            if sog > 3:
+                from datetime import datetime
+                out_of_range.append({
+                    'mmsi': mmsi,
+                    'name': last.get('name', 'Desconocido'),
+                    'last_speed': sog,
+                    'last_seen': datetime.fromtimestamp(last['_last_ts']).strftime('%H:%M'),
+                    'amenaza': _classify_threat(last),
+                })
+
+    # ROZ Rota: 5nm radius from 36.6367N, 6.3493W
+    ROZ_CENTER = {'lat': 36.6367, 'lon': -6.3493, 'radius_nm': 5}
+
+    return {
+        'vessels': vessels_enriched,
+        'out_of_range': out_of_range,
+        'roz': ROZ_CENTER,
+        'total': len(vessels_enriched),
+        'rojo': sum(1 for v in vessels_enriched if v['amenaza'] == 'ROJO'),
+        'amarillo': sum(1 for v in vessels_enriched if v['amenaza'] == 'AMARILLO'),
+        'verde': sum(1 for v in vessels_enriched if v['amenaza'] == 'VERDE'),
+    }
+
+# --- PESCA ---
+def _moon_phase(date=None):
+    """Calculate moon phase without external API. Returns phase 0-29 and name in Spanish."""
+    from datetime import datetime, date as _date
+    import math as _math
+    if date is None:
+        import datetime as _dt_mod
+        date = _dt_mod.datetime.now(_dt_mod.timezone.utc).date()
+    # Reference new moon: Jan 6, 2000
+    ref = _date(2000, 1, 6)
+    days = (date - ref).days
+    cycle = 29.53058867
+    phase_days = days % cycle
+    if phase_days < 0:
+        phase_days += cycle
+    # Determine name
+    if phase_days < 1.85:
+        name = 'Luna Nueva'
+        icon = '🌑'
+    elif phase_days < 7.38:
+        name = 'Cuarto Creciente'
+        icon = '🌒'
+    elif phase_days < 9.22:
+        name = 'Cuarto Creciente'
+        icon = '🌓'
+    elif phase_days < 14.77:
+        name = 'Luna Llena'
+        icon = '🌕'
+    elif phase_days < 16.61:
+        name = 'Cuarto Menguante'
+        icon = '🌖'
+    elif phase_days < 22.15:
+        name = 'Cuarto Menguante'
+        icon = '🌗'
+    elif phase_days < 23.99:
+        name = 'Luna Nueva'
+        icon = '🌘'
+    else:
+        name = 'Luna Nueva'
+        icon = '🌑'
+    return {'days': round(phase_days, 1), 'name': name, 'icon': icon}
+
+# Species calendar for Bay of Cadiz by month (1=Jan ... 12=Dec)
+SPECIES_CALENDAR = {
+    'Dorada':      [1,2,3,10,11,12],
+    'Lubina':      [1,2,3,4,9,10,11,12],
+    'Atún':        [5,6,7,8,9],
+    'Pargo':       [4,5,6,7,8,9,10],
+    'Boquerón':    [3,4,5,6,7,8],
+    'Caballa':     [3,4,5,6,7,8,9],
+    'Lenguado':    [2,3,4,5,10,11],
+    'Choco':       [1,2,3,10,11,12],
+    'Gamba':       [1,2,3,4,10,11,12],
+    'Langostino':  [4,5,6,7,8,9],
+    'Pez espada':  [6,7,8,9],
+    'Dentón':      [4,5,6,7,8,9,10],
+}
+
+def fetch_pesca():
+    from datetime import datetime
+    import math as _math
+
+    datos = get_datos_maritimos()
+    wave_h = datos.get('altura_max', 0)
+    wind_kmh = datos.get('viento_kmh', 0)
+    visibility_km = datos.get('visibilidad', 10)
+    pressure = datos.get('presion', 1013)
+
+    # Tide state — use mareas data
+    mareas = get_dash_cached('mareas', fetch_mareas)
+    extremes = mareas.get('extremes', [])
+    now_h = datetime.now().hour * 60 + datetime.now().minute
+    tide_state = 'desconocido'
+    best_fishing_hours = []
+
+    if extremes:
+        # Determine tide direction (entrante/saliente)
+        for i in range(len(extremes) - 1):
+            try:
+                t1 = extremes[i]['time']
+                t2 = extremes[i+1]['time']
+                h1 = int(t1.split(':')[0]) * 60 + int(t1.split(':')[1])
+                h2 = int(t2.split(':')[0]) * 60 + int(t2.split(':')[1])
+                if h1 <= now_h <= h2:
+                    tide_state = 'entrante' if extremes[i+1]['type'] == 'pleamar' else 'saliente'
+                    break
+            except Exception:
+                pass
+
+        # Best hours: 1h before/after each tide extreme
+        for e in extremes:
+            try:
+                hh, mm = map(int, e['time'].split(':'))
+                base = hh * 60 + mm
+                for offset in [-60, 60]:
+                    h2 = (base + offset) % 1440
+                    best_fishing_hours.append(f"{h2//60:02d}:{h2%60:02d}")
+            except Exception:
+                pass
+
+    # Sunrise/sunset windows (+30min after sunrise, -30min before sunset)
+    try:
+        sr = datos.get('sunrise', '07:00')
+        ss = datos.get('sunset', '20:00')
+        srh, srm = map(int, sr.split(':'))
+        ssh, ssm = map(int, ss.split(':'))
+        # 30min after sunrise
+        sr_window = f"{(srh*60+srm+30)//60:02d}:{(srh*60+srm+30)%60:02d}"
+        # 30min before sunset
+        ss_window = f"{(ssh*60+ssm-30)//60:02d}:{(ssh*60+ssm-30)%60:02d}"
+        best_fishing_hours = [sr_window] + best_fishing_hours + [ss_window]
+    except Exception:
+        pass
+
+    # Fishing index (1-10)
+    score = 0
+    reasons_ok = []
+    reasons_bad = []
+
+    if wave_h < 1.0:
+        score += 2; reasons_ok.append('Olas < 1m')
+    elif wave_h < 1.5:
+        score += 1
+    else:
+        reasons_bad.append(f'Olas altas ({wave_h:.1f}m)')
+
+    if wind_kmh < 15:
+        score += 2; reasons_ok.append('Viento ligero')
+    elif wind_kmh < 25:
+        score += 1
+    else:
+        reasons_bad.append(f'Viento fuerte ({wind_kmh:.0f} km/h)')
+
+    if tide_state in ('entrante', 'saliente'):
+        score += 2; reasons_ok.append(f'Marea {tide_state}')
+
+    if visibility_km >= 5:
+        score += 2; reasons_ok.append('Buena visibilidad')
+    else:
+        reasons_bad.append(f'Visibilidad reducida ({visibility_km}km)')
+
+    # No rain approximated by weather code
+    score += 2  # assume no rain (datos maritimos doesn't have precip directly)
+
+    fishing_index = min(10, max(1, score))
+
+    # Go/No-Go
+    go = True
+    limiter = None
+    if wave_h > 2.0:
+        go = False; limiter = f'Olas > 2m ({wave_h:.1f}m)'
+    elif wind_kmh > 25:
+        go = False; limiter = f'Viento > 25 km/h ({wind_kmh:.0f} km/h)'
+    elif pressure < 995:
+        go = False; limiter = f'Presión muy baja — posible tormenta ({pressure:.0f} hPa)'
+
+    # Moon phase
+    moon = _moon_phase()
+
+    # Species in season (current month)
+    month = datetime.now().month
+    in_season = [s for s, months in SPECIES_CALENDAR.items() if month in months]
+    off_season = [s for s in SPECIES_CALENDAR if s not in in_season]
+
+    # Sea temp sparkline (last 7 days from cache)
+    oleaje = get_dash_cached('oleaje', fetch_oleaje)
+    temps_agua = [t for t in (oleaje.get('temp_agua') or []) if t is not None][:7*24:3]
+
+    return {
+        'fishing_index': fishing_index,
+        'go_nogo': {'go': go, 'limiter': limiter},
+        'best_hours': sorted(set(best_fishing_hours)),
+        'tide_state': tide_state,
+        'moon': moon,
+        'species_in_season': in_season,
+        'species_off_season': off_season,
+        'temp_agua_sparkline': temps_agua[:7],
+        'temp_agua_current': datos.get('temp_agua'),
+        'reasons_ok': reasons_ok,
+        'reasons_bad': reasons_bad,
+    }
+
 _DASH_FETCHERS = {
     'meteo': fetch_meteo, 'oleaje': fetch_oleaje, 'mareas': fetch_mareas,
     'ais': fetch_ais, 'alertas': fetch_alertas,
     'prediccion': fetch_prediccion, 'calidad': fetch_calidad,
+    'vigilancia': fetch_vigilancia, 'pesca': fetch_pesca,
 }
 
 # --- RUTAS ---

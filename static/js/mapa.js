@@ -25,12 +25,26 @@ mapa.on('load', () => {
         .setPopup(new mapboxgl.Popup({offset:25}).setHTML('<strong>Puerto de Rota</strong>'))
         .addTo(mapa);
 
-    // ROZ circle
+    // ROZ Rota: 5nm radius circle polygon (1nm ≈ 1852m)
+    const rozCenter = [-6.3493, 36.6367];
+    const rozRadiusNm = 5;
+    const rozRadiusDeg = rozRadiusNm * 1852 / 111320;
+    const rozPoints = Array.from({length: 64}, (_, i) => {
+        const angle = (i / 64) * 2 * Math.PI;
+        return [
+            rozCenter[0] + rozRadiusDeg * Math.cos(angle) / Math.cos(rozCenter[1] * Math.PI / 180),
+            rozCenter[1] + rozRadiusDeg * Math.sin(angle)
+        ];
+    });
+    rozPoints.push(rozPoints[0]);  // close ring
     mapa.addSource('zona', {type:'geojson', data:{type:'Feature',
-        geometry:{type:'Point', coordinates:[-6.3493,36.6367]}}});
-    mapa.addLayer({id:'zona-radio', type:'circle', source:'zona', paint:{
-        'circle-radius':40,'circle-color':'#4AC8E8','circle-opacity':0.06,
-        'circle-stroke-width':1,'circle-stroke-color':'#4AC8E8','circle-stroke-opacity':0.3}});
+        geometry:{type:'Polygon', coordinates:[rozPoints]}}});
+    mapa.addLayer({id:'zona-radio-fill', type:'fill', source:'zona',
+        layout:{visibility:'visible'},
+        paint:{'fill-color':'#ef4444','fill-opacity':0.06}});
+    mapa.addLayer({id:'zona-radio', type:'line', source:'zona',
+        layout:{visibility:'visible'},
+        paint:{'line-color':'#ef4444','line-width':1.5,'line-opacity':0.5,'line-dasharray':[4,2]}});
 
     // AIS source + layer (hidden initially)
     mapa.addSource('ais-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
@@ -72,14 +86,20 @@ function loadAISLayer() {
 function toggleMapLayer(layer) {
     if (!mapLayersReady) return;
     if (layer==='ais') {
-        const vis = document.getElementById('toggle-ais').checked ? 'visible' : 'none';
+        const vis = document.getElementById('toggle-ais')?.checked ? 'visible' : 'none';
         mapa.setLayoutProperty('ais-layer','visibility',vis);
         if (vis==='visible') loadAISLayer();
     }
     if (layer==='waypoints') {
-        const show = document.getElementById('toggle-waypoints').checked;
+        const show = document.getElementById('toggle-waypoints')?.checked;
         document.querySelectorAll('.mapboxgl-marker')
             .forEach(m => m.style.display = show ? '' : 'none');
+    }
+    if (layer==='roz') {
+        const vis = document.getElementById('toggle-roz')?.checked ? 'visible' : 'none';
+        ['zona-radio-fill','zona-radio'].forEach(id => {
+            if (mapa.getLayer(id)) mapa.setLayoutProperty(id,'visibility',vis);
+        });
     }
 }
 
