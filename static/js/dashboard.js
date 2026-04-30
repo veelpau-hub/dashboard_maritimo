@@ -408,15 +408,21 @@ function renderPesca(data, el) {
     const idxColor = idx <= 3 ? '#ef4444' : idx <= 6 ? '#f59e0b' : '#22c55e';
     const gn = data.go_nogo || {};
     const goColor = gn.go ? '#22c55e' : '#ef4444';
-    const goText = gn.go ? 'SÍ PUEDES SALIR' : 'NO SALGAS';
+    const goText = gn.go ? 'SI PUEDES SALIR' : 'NO SALGAS';
     const moon = data.moon || {};
     const hours = (data.best_hours || []).slice(0, 6);
     const species = data.species_in_season || [];
     const tempAgua = data.temp_agua_current;
+    const solunar = data.solunar || [];
 
+    const speciesIcons = {
+        'Dorada':'🐡','Lubina':'🐟','Atún':'🐟','Pargo':'🐠','Boquerón':'🐟',
+        'Caballa':'🐟','Lenguado':'🫓','Choco':'🦑','Gamba':'🦐','Langostino':'🦞',
+        'Pez espada':'🐟','Dentón':'🐡'
+    };
     const speciesCards = species.map(s =>
         `<div class="dash-card" style="text-align:center;padding:0.6rem">
-            <div style="font-size:1.2rem">🐟</div>
+            <div style="font-size:1.2rem">${speciesIcons[s]||'🐟'}</div>
             <div style="font-size:0.75rem;color:rgba(255,255,255,0.8);margin-top:0.25rem">${esc(s)}</div>
             <div style="font-size:0.6rem;color:#22c55e;margin-top:0.1rem">EN TEMPORADA</div>
          </div>`).join('');
@@ -431,6 +437,18 @@ function renderPesca(data, el) {
     // Sparkline de temp agua
     const sparkData = data.temp_agua_sparkline || [];
     const sparkEl = `<div class="dash-chart-container" id="chart-temp-agua" style="height:80px"></div>`;
+
+    // Solunar periods
+    const solunarHtml = solunar.map(s => {
+        const isMajor = s.type === 'mayor';
+        const color = isMajor ? '#f59e0b' : '#4AC8E8';
+        const badge = isMajor ? '★★ MAYOR' : '★ menor';
+        return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <span style="font-size:0.9rem;color:${color};font-weight:700;min-width:38px">${esc(s.time)}</span>
+            <span style="font-size:0.65rem;color:${color}">${badge}</span>
+            <span style="font-size:0.7rem;color:rgba(255,255,255,0.4)">${esc(s.label||'')} · ${s.duration||0}min</span>
+        </div>`;
+    }).join('');
 
     el.innerHTML = `
         <p class="dash-section-title">Condiciones de pesca — Bahía de Cádiz</p>
@@ -461,6 +479,12 @@ function renderPesca(data, el) {
         ${reasonsOk || reasonsBad ? `<div class="dash-card" style="margin-bottom:0.75rem">
             <div class="dash-card-label">Factores de condición</div>
             <div style="margin-top:0.4rem">${reasonsOk}${reasonsBad}</div>
+        </div>` : ''}
+
+        ${solunar.length ? `<div class="dash-card" style="margin-bottom:0.75rem">
+            <div class="dash-card-label">Períodos solunares hoy</div>
+            <div style="margin-top:0.4rem">${solunarHtml}</div>
+            <div style="font-size:0.62rem;color:rgba(255,255,255,0.2);margin-top:0.4rem">Teoría solunar de John Alden Knight — aproximación astronómica</div>
         </div>` : ''}
 
         <div class="dash-card" style="margin-bottom:0.75rem">

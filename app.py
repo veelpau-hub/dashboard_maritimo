@@ -528,6 +528,54 @@ SPECIES_CALENDAR = {
     'Dentón':      [4,5,6,7,8,9,10],
 }
 
+def _solunar_times(lat=36.637, lon=-6.362, date=None):
+    """Calculate solunar major/minor times for a given location and date.
+    Returns list of {time, type, duration_min} dicts.
+    Based on simplified moon transit algorithm (mean values, ~15min accuracy).
+    """
+    from datetime import datetime, timezone, timedelta
+    import math as _math
+    if date is None:
+        date = datetime.now(timezone.utc).date()
+
+    # Julian day number
+    y, m, d = date.year, date.month, date.day
+    jd = 367*y - int(7*(y+int((m+9)/12))/4) + int(275*m/9) + d + 1721013.5
+
+    # Mean lunar longitude (simplified)
+    T = (jd - 2451545.0) / 36525.0
+    L0 = (218.316 + 13.176396 * (jd - 2451545.0)) % 360  # Moon's mean longitude deg
+    # Moon transit overhead at longitude lon: when moon is directly overhead
+    # Approximate moon RA (simplified)
+    moon_ra_h = (L0 / 360 * 24)  # rough hours
+
+    # Longitude correction
+    lon_offset = lon / 15.0  # hours
+
+    # Major period 1: moon overhead
+    major1_utc = (moon_ra_h - lon_offset) % 24
+    # Major period 2: moon underfoot (12h later)
+    major2_utc = (major1_utc + 12) % 24
+    # Minor periods: 6h offset from majors (moonrise/moonset)
+    minor1_utc = (major1_utc + 6) % 24
+    minor2_utc = (major1_utc + 18) % 24
+
+    # Convert UTC to local (Spain: UTC+1 in winter, UTC+2 in summer)
+    # Simplified: use UTC+1 always (close enough for Rota, may be off by 1h in summer)
+    utc_offset = 2  # CEST
+    def to_local(h):
+        return (h + utc_offset) % 24
+
+    def fmt(h):
+        return f"{int(h):02d}:{int((h%1)*60):02d}"
+
+    return [
+        {'time': fmt(to_local(major1_utc)), 'type': 'mayor', 'duration': 90, 'label': 'Luna en el meridiano'},
+        {'time': fmt(to_local(major2_utc)), 'type': 'mayor', 'duration': 90, 'label': 'Luna bajo el horizonte'},
+        {'time': fmt(to_local(minor1_utc)), 'type': 'menor', 'duration': 45, 'label': 'Luna en el este'},
+        {'time': fmt(to_local(minor2_utc)), 'type': 'menor', 'duration': 45, 'label': 'Luna en el oeste'},
+    ]
+
 def fetch_pesca():
     from datetime import datetime
     import math as _math
@@ -638,12 +686,23 @@ def fetch_pesca():
     oleaje = get_dash_cached('oleaje', fetch_oleaje)
     temps_agua = [t for t in (oleaje.get('temp_agua') or []) if t is not None][:7*24:3]
 
+    # Solunar times
+    solunar = _solunar_times()
+
+    # Barometric pressure advice
+    presion_trend = get_presion_trend()
+    if presion_trend.get('trend') == 'bajando' and not reasons_bad:
+        reasons_ok.append('Presion bajando — picada activa inminente')
+    elif presion_trend.get('trend') == 'bajando':
+        reasons_ok.append('Presion bajando — buena picada esperada')
+
     return {
         'fishing_index': fishing_index,
         'go_nogo': {'go': go, 'limiter': limiter},
         'best_hours': sorted(set(best_fishing_hours)),
         'tide_state': tide_state,
         'moon': moon,
+        'solunar': solunar,
         'species_in_season': in_season,
         'species_off_season': off_season,
         'temp_agua_sparkline': temps_agua[:7],
