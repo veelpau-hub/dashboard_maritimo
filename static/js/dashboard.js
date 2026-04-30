@@ -83,24 +83,36 @@ function renderMeteo(data, el) {
     const winds = (data.wind||[]).filter((_,i) => i%step===0);
     const precips = (data.precip||[]).filter((_,i) => i%step===0);
     const pressures = (data.pressure||[]).filter((_,i) => i%step===0);
+    const humidities = (data.humidity||[]).filter((_,i) => i%step===0);
 
-    // Current conditions summary
-    const curTemp = temps[0] != null ? temps[0].toFixed(1) : '-';
-    const curWind = winds[0] != null ? winds[0].toFixed(0) : '-';
-    const curPress = pressures[0] != null ? pressures[0].toFixed(0) : '-';
+    // Current conditions from current object if available
+    const cur = data.current || {};
+    const curTemp = cur.temp != null ? cur.temp.toFixed(1) : (temps[0] != null ? temps[0].toFixed(1) : '-');
+    const curApparent = cur.apparent_temp != null ? cur.apparent_temp.toFixed(1) : '-';
+    const curWind = cur.wind != null ? cur.wind.toFixed(0) : (winds[0] != null ? winds[0].toFixed(0) : '-');
+    const curPress = cur.pressure != null ? cur.pressure.toFixed(0) : (pressures[0] != null ? pressures[0].toFixed(0) : '-');
+    const curHumidity = cur.humidity != null ? cur.humidity.toFixed(0) : '-';
+    const curVisKm = cur.visibility_m != null ? (cur.visibility_m/1000).toFixed(1) : '-';
     const totalPrecip = precips.reduce((a,b) => a + (b||0), 0).toFixed(1);
+    const icon = WX_ICONS[cur.code] || '🌡';
 
     el.innerHTML = `
-        <p class="dash-section-title">Meteorología — 7 días</p>
+        <p class="dash-section-title">Meteorología — ahora + 7 días</p>
         <div class="dash-grid" style="margin-bottom:0.75rem">
-            <div class="dash-card"><div class="dash-card-label">Temperatura</div><div class="dash-card-value">${curTemp}°C</div></div>
+            <div class="dash-card" style="text-align:center">
+                <div style="font-size:2rem">${icon}</div>
+                <div class="dash-card-value">${curTemp}°C</div>
+                <div class="dash-card-sub">Sensación ${curApparent}°C</div>
+            </div>
             <div class="dash-card"><div class="dash-card-label">Viento</div><div class="dash-card-value">${curWind} km/h</div></div>
             <div class="dash-card"><div class="dash-card-label">Presión</div><div class="dash-card-value">${curPress} hPa</div></div>
-            <div class="dash-card"><div class="dash-card-label">Precip. total</div><div class="dash-card-value">${totalPrecip} mm</div></div>
+            <div class="dash-card"><div class="dash-card-label">Humedad</div><div class="dash-card-value">${curHumidity}%</div></div>
+            <div class="dash-card"><div class="dash-card-label">Visibilidad</div><div class="dash-card-value">${curVisKm} km</div></div>
+            <div class="dash-card"><div class="dash-card-label">Precip. 7d</div><div class="dash-card-value" style="font-size:1.1rem">${totalPrecip} mm</div></div>
         </div>
-        <div class="dash-chart-container" id="chart-temp" style="height:140px"></div>
-        <div class="dash-chart-container" id="chart-wind" style="height:120px"></div>
-        <div class="dash-chart-container" id="chart-press" style="height:100px"></div>`;
+        <div class="dash-chart-container" id="chart-temp" style="height:130px"></div>
+        <div class="dash-chart-container" id="chart-wind" style="height:110px"></div>
+        <div class="dash-chart-container" id="chart-press" style="height:90px"></div>`;
     requestAnimationFrame(() => {
         drawLineChart('#chart-temp', horas, temps, '°C', '#4AC8E8');
         drawLineChart('#chart-wind', horas, winds, 'km/h', '#f59e0b');

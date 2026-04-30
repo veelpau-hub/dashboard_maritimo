@@ -346,15 +346,31 @@ def get_dash_cached(key, fetch_fn):
 def fetch_meteo(lat=36.62, lon=-6.35):
     r = requests.get('https://api.open-meteo.com/v1/forecast', params={
         'latitude': lat, 'longitude': lon,
-        'hourly': 'temperature_2m,wind_speed_10m,precipitation,surface_pressure',
+        'hourly': 'temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,precipitation,surface_pressure,relative_humidity_2m,visibility',
+        'current': 'temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,relative_humidity_2m,weather_code,visibility',
         'timezone': 'auto', 'forecast_days': 7
     }, verify=False, timeout=10).json()
+    current = r.get('current', {})
     return {
         'time': r['hourly']['time'],
         'temp': r['hourly']['temperature_2m'],
+        'apparent_temp': r['hourly']['apparent_temperature'],
         'wind': r['hourly']['wind_speed_10m'],
+        'wind_dir': r['hourly']['wind_direction_10m'],
         'precip': r['hourly']['precipitation'],
         'pressure': r['hourly']['surface_pressure'],
+        'humidity': r['hourly']['relative_humidity_2m'],
+        'visibility': r['hourly']['visibility'],
+        'current': {
+            'temp': current.get('temperature_2m'),
+            'apparent_temp': current.get('apparent_temperature'),
+            'wind': current.get('wind_speed_10m'),
+            'wind_dir': current.get('wind_direction_10m'),
+            'pressure': current.get('surface_pressure'),
+            'humidity': current.get('relative_humidity_2m'),
+            'code': current.get('weather_code'),
+            'visibility_m': current.get('visibility'),
+        },
     }
 
 def fetch_oleaje(lat=36.62, lon=-6.35):
