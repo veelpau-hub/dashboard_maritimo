@@ -120,13 +120,25 @@ function renderOleaje(data, el) {
     const hourIdx = new Date().getHours();
     const currentDir = (data.direction||[])[hourIdx] ?? (data.direction||[])[0] ?? 0;
 
+    // Wave energy category
+    const waveEnergy = current != null ? (current * current) * (period > 0 ? period : 1) : 0;
+    const waveCat = waveEnergy < 2 ? {label:'Calma', color:'#22c55e'} :
+                    waveEnergy < 8 ? {label:'Moderado', color:'#f59e0b'} :
+                    {label:'Fuerte', color:'#ef4444'};
+
     el.innerHTML = `
         <p class="dash-section-title">Oleaje — 7 días</p>
         <div class="dash-grid">
             <div class="dash-card"><div class="dash-card-label">Altura actual</div>
-                <div class="dash-card-value">${(current??0).toFixed(1)}m</div></div>
-            <div class="dash-card"><div class="dash-card-label">Período</div>
-                <div class="dash-card-value">${period.toFixed(0)}s</div></div>
+                <div class="dash-card-value">${(current??0).toFixed(1)}m</div>
+                <div class="dash-card-sub" style="color:${waveCat.color}">${waveCat.label}</div>
+            </div>
+            <div class="dash-card" style="position:relative;overflow:hidden">
+                <div class="dash-card-label">Período</div>
+                <div class="dash-card-value">${period.toFixed(0)}s</div>
+                <div class="dash-card-sub">entre olas</div>
+                <div id="wave-pulse" style="position:absolute;inset:0;border-radius:10px;background:rgba(74,200,232,0.06);transform:scale(0);animation:wavePulse ${period.toFixed(1)}s ease-in-out infinite"></div>
+            </div>
             ${tempAgua!=null?`<div class="dash-card"><div class="dash-card-label">Temp. agua</div>
                 <div class="dash-card-value">${tempAgua.toFixed(1)}°</div></div>`:''}
             <div class="dash-card" style="display:flex;flex-direction:column;align-items:center">
@@ -273,22 +285,54 @@ function parseTime(t) {
     return parseInt(p[0]||0)*60+parseInt(p[1]||0);
 }
 
+let _aisAllVessels = [];
+
 function renderAIS(data, el) {
     if (data.note) { el.innerHTML=`<p style="color:rgba(255,255,255,0.35);padding:1rem">${esc(data.note)}</p>`; return; }
     const vessels = data.vessels||[];
+    _aisAllVessels = vessels;
     if (!vessels.length) { el.innerHTML='<p style="color:rgba(255,255,255,0.35);padding:1rem">Sin buques detectados en el área.</p>'; return; }
-    const rows = vessels.map(v=>`<tr>
-        <td>${esc(v.name)}</td><td>${esc(String(v.type||'-'))}</td>
-        <td>${v.speed!=null?v.speed.toFixed(1)+' kt':'-'}</td>
-        <td>${v.course!=null?v.course+'°':'-'}</td>
-        <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.destination?esc(v.destination):'-'}</td>
-        <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${esc(String(v.mmsi||'').replace(/[^0-9]/g,''))}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
-        </tr>`).join('');
+
     el.innerHTML = `
-        <p class="dash-section-title">Buques en el área de Rota (~5 min retraso)</p>
-        <div class="ais-table-wrap"><table class="ais-table">
+        <p class="dash-section-title">Buques en el área de Rota (~5 min retraso) — ${vessels.length} buques</p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem">
+            <input id="ais-search" placeholder="Buscar por nombre..." style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.75rem;width:160px" oninput="filterAISTable()">
+            <select id="ais-filter-speed" onchange="filterAISTable()" style="background:#0d1520;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.7);padding:4px 8px;font-size:0.73rem">
+                <option value="">Todos (velocidad)</option>
+                <option value="moving">En movimiento (>0.5kt)</option>
+                <option value="anchored">Fondeados</option>
+            </select>
+        </div>
+        <div class="ais-table-wrap"><table class="ais-table" id="ais-main-table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>MMSI</th></tr></thead>
-            <tbody>${rows}</tbody></table></div>`;
+            <tbody id="ais-tbody"></tbody></table></div>`;
+    renderAISRows(vessels);
+}
+
+function filterAISTable() {
+    const search = (document.getElementById('ais-search')?.value||'').toLowerCase();
+    const speedFilter = document.getElementById('ais-filter-speed')?.value || '';
+    let filtered = _aisAllVessels.filter(v => {
+        if (search && !(v.name||'').toLowerCase().includes(search)) return false;
+        if (speedFilter === 'moving' && (v.speed||0) <= 0.5) return false;
+        if (speedFilter === 'anchored' && (v.speed||0) > 0.5) return false;
+        return true;
+    });
+    renderAISRows(filtered);
+}
+
+function renderAISRows(vessels) {
+    const tbody = document.getElementById('ais-tbody');
+    if (!tbody) return;
+    const rows = vessels.map(v=>`<tr>
+        <td>${esc(v.name)}</td>
+        <td>${esc(String(v.type||'-'))}</td>
+        <td>${v.speed!=null?v.speed.toFixed(1)+' kt':'-'}</td>
+        <td>${v.course!=null?v.course.toFixed(0)+'°':'-'}</td>
+        <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.destination?esc(v.destination):'-'}</td>
+        <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
+        </tr>`).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="6" style="color:rgba(255,255,255,0.3);text-align:center">Sin resultados</td></tr>';
 }
 
 function renderAlertas(data, el) {

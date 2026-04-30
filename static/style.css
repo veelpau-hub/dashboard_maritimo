@@ -785,3 +785,14 @@ body {
     border-radius: 50%;
     box-shadow: 0 0 8px rgba(74,200,232,0.6);
 }
+
+/* WAVE PERIOD PULSE */
+@keyframes wavePulse {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0; }
+}
+
+/* AIS SEARCH */
+#ais-search::placeholder { color: rgba(255,255,255,0.25); }
+#ais-search:focus { outline: none; border-color: rgba(74,200,232,0.4); }
