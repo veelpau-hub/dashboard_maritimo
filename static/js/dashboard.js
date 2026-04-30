@@ -15,13 +15,26 @@ let currentDashTab = null;
 
 function switchDashTab(tab) {
     currentDashTab = tab;
-    document.getElementById('dash-tab-label').textContent = DASH_LABELS[tab] || 'DASHBOARD';
+    const label = DASH_LABELS[tab] || 'DASHBOARD';
+    const isLive = tab === 'ais' || tab === 'vigilancia';
+    const labelEl = document.getElementById('dash-tab-label');
+    if (labelEl) {
+        if (isLive) {
+            labelEl.innerHTML = label + ' <span class="live-badge"><span class="live-dot"></span>LIVE</span>';
+        } else {
+            labelEl.textContent = label;
+        }
+    }
     document.querySelectorAll('.submenu-btn').forEach(b => b.classList.remove('active'));
     const idx = Object.keys(DASH_LABELS).indexOf(tab);
     if (idx >= 0) document.querySelectorAll('.submenu-btn')[idx].classList.add('active');
 
     const content = document.getElementById('dash-content');
-    content.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:0.8rem;padding:1rem">Cargando...</p>';
+    // Skeleton loading
+    content.innerHTML = `
+        <div class="dash-skeleton" style="height:50px"></div>
+        <div class="dash-skeleton" style="height:100px"></div>
+        <div class="dash-skeleton" style="height:70px"></div>`;
 
     const coordAware = ['meteo','oleaje','prediccion'];
     let url = `/api/dashboard/${tab}`;
@@ -29,9 +42,19 @@ function switchDashTab(tab) {
         url += `?lat=${window.geoCoords.lat}&lon=${window.geoCoords.lon}`;
 
     fetch(url)
-        .then(r => r.json())
-        .then(data => { const fn = renders[tab]; if (fn) fn(data, content); })
-        .catch(() => { content.innerHTML = '<p style="color:#ef4444;padding:1rem">Error cargando datos.</p>'; });
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(data => {
+            const fn = renders[tab];
+            if (fn) fn(data, content);
+            // Add timestamp
+            const ts = document.createElement('div');
+            ts.className = 'data-ts';
+            ts.textContent = `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+            content.appendChild(ts);
+        })
+        .catch(err => {
+            content.innerHTML = `<p style="color:#ef4444;padding:1rem">Error cargando datos: ${esc(String(err))}</p>`;
+        });
 }
 
 const renders = {
@@ -240,12 +263,13 @@ function renderAIS(data, el) {
         <td>${esc(v.name)}</td><td>${esc(String(v.type||'-'))}</td>
         <td>${v.speed!=null?v.speed.toFixed(1)+' kt':'-'}</td>
         <td>${v.course!=null?v.course+'°':'-'}</td>
-        <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${esc(String(v.mmsi||''))}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
+        <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.destination?esc(v.destination):'-'}</td>
+        <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${esc(String(v.mmsi||'').replace(/[^0-9]/g,''))}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
         </tr>`).join('');
     el.innerHTML = `
         <p class="dash-section-title">Buques en el área de Rota (~5 min retraso)</p>
         <div class="ais-table-wrap"><table class="ais-table">
-            <thead><tr><th>Nombre</th><th>Tipo</th><th>Velocidad</th><th>Rumbo</th><th>MMSI</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>MMSI</th></tr></thead>
             <tbody>${rows}</tbody></table></div>`;
 }
 

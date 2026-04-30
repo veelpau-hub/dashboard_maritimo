@@ -29,7 +29,7 @@ def _on_open(ws):
     ws.send(json.dumps({
         "APIKey": api_key,
         "BoundingBoxes": BOUNDING_BOX,
-        "FilterMessageTypes": ["PositionReport"],
+        "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
     }))
     logging.info("AISstream conectado")
 
@@ -37,23 +37,40 @@ def _on_open(ws):
 def _on_message(ws, raw):
     try:
         data = json.loads(raw)
-        if data.get("MessageType") != "PositionReport":
-            return
+        msg_type = data.get("MessageType")
         meta = data.get("MetaData", {})
-        pos  = data.get("Message", {}).get("PositionReport", {})
         mmsi = meta.get("MMSI")
         if not mmsi:
             return
-        with _lock:
-            _vessels[mmsi] = {
-                "mmsi":   mmsi,
-                "name":   meta.get("ShipName", "Desconocido").strip(),
-                "lat":    meta.get("Latitude"),
-                "lon":    meta.get("Longitude"),
-                "speed":  pos.get("Sog"),
-                "course": pos.get("Cog"),
-                "_ts":    time.time(),
-            }
+
+        if msg_type == "PositionReport":
+            pos = data.get("Message", {}).get("PositionReport", {})
+            with _lock:
+                existing = _vessels.get(mmsi, {})
+                _vessels[mmsi] = {
+                    "mmsi":        mmsi,
+                    "name":        meta.get("ShipName", "Desconocido").strip(),
+                    "lat":         meta.get("Latitude"),
+                    "lon":         meta.get("Longitude"),
+                    "speed":       pos.get("Sog"),
+                    "course":      pos.get("Cog"),
+                    "nav_status":  pos.get("NavigationalStatus"),
+                    "type":        existing.get("type"),
+                    "destination": existing.get("destination"),
+                    "_ts":         time.time(),
+                }
+        elif msg_type == "ShipStaticData":
+            static = data.get("Message", {}).get("ShipStaticData", {})
+            with _lock:
+                existing = _vessels.get(mmsi, {"mmsi": mmsi, "_ts": time.time()})
+                existing.update({
+                    "type":        static.get("Type"),
+                    "destination": (static.get("Destination") or "").strip() or None,
+                    "eta":         static.get("Eta"),
+                    "draught":     static.get("MaximumStaticDraught"),
+                    "callsign":    static.get("CallSign", "").strip() or None,
+                })
+                _vessels[mmsi] = existing
     except Exception as e:
         logging.warning(f"AIS parse error: {e}")
 
