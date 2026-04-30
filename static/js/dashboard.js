@@ -373,6 +373,11 @@ function renderCalidad(data, el) {
     const aqi=data.aqi||0;
     const color=aqi<20?'#22c55e':aqi<40?'#84cc16':aqi<60?'#f59e0b':aqi<80?'#f97316':'#ef4444';
     const label=aqi<20?'Muy buena':aqi<40?'Buena':aqi<60?'Moderada':aqi<80?'Mala':'Muy mala';
+    // AQI gradient bar
+    const aqiBarWidth = Math.min(100, (aqi / 100) * 100).toFixed(0);
+    const aqiBar = `<div style="margin:0.5rem 0;background:rgba(255,255,255,0.06);border-radius:4px;height:8px;overflow:hidden">
+        <div style="width:${aqiBarWidth}%;height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);border-radius:4px;transition:width 0.5s"></div>
+    </div>`;
     // UV protection recommendations
     const uv = data.uv || 0;
     let uvLabel, uvColor, uvRec;
@@ -384,8 +389,17 @@ function renderCalidad(data, el) {
 
     el.innerHTML=`
         <p class="dash-section-title">Calidad del aire — ahora</p>
+        <div class="dash-card" style="margin-bottom:0.75rem">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><div class="dash-card-label">Índice AQI (Europeo)</div>
+                <div style="font-size:2rem;font-weight:700;color:${color};line-height:1.1">${aqi}</div>
+                <div class="dash-card-sub" style="color:${color}">${label}</div></div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.35);text-align:right">0 Muy buena<br>100+ Muy mala</div>
+            </div>
+            ${aqiBar}
+        </div>
         <div class="dash-grid">
-            <div class="dash-card"><div class="dash-card-label">Índice AQI</div>
+            <div class="dash-card"><div class="dash-card-label">AQI</div>
                 <div class="dash-card-value" style="color:${color}">${aqi}</div>
                 <div class="dash-card-sub">${label}</div></div>
             <div class="dash-card">
@@ -402,6 +416,7 @@ function renderCalidad(data, el) {
                 <div class="dash-card-value" style="font-size:1.1rem">${data.ozone?.toFixed(0)||'-'} μg/m³</div></div>
         </div>`;
 }
+
 
 // =================== VIGILANCIA ===================
 function renderVigilancia(data, el) {
@@ -437,13 +452,14 @@ function renderVigilancia(data, el) {
         vesselRows = vessels.map(v => `
             <tr>
                 <td>${esc(v.name)}</td>
+                <td>${esc(v.type_name||v.type||'-')}</td>
                 <td>${threatBadge(v.amenaza)}</td>
                 <td>${statusBadge(v.estado)}</td>
                 <td>${v.speed != null ? esc(v.speed.toFixed(1)) + ' kt' : '-'}</td>
-                <td style="font-size:0.7rem;color:rgba(255,255,255,0.4)">${esc(String(v.mmsi||''))}</td>
+                <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
             </tr>`).join('');
         vesselRows = `<div style="overflow-x:auto"><table class="ais-table">
-            <thead><tr><th>Nombre</th><th>Amenaza</th><th>Estado</th><th>SOG</th><th>MMSI</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Amenaza</th><th>Estado</th><th>SOG</th><th>MMSI</th></tr></thead>
             <tbody>${vesselRows}</tbody></table></div>`;
     }
 

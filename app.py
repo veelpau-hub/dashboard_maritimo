@@ -461,6 +461,33 @@ def fetch_calidad():
 _ais_history: dict = {}  # mmsi -> list of {lat,lon,ts}
 _ais_seen_last: dict = {}  # mmsi -> {vessel info, last_ts}
 
+# AIS type codes to human readable names
+AIS_TYPE_NAMES = {
+    '20': 'Ala delta', '21': 'Aeronave', '22': 'Aeronave',
+    '30': 'Pesca', '31': 'Remolque', '32': 'Remolque largo',
+    '33': 'Draga', '34': 'Buceo', '35': 'Militar', '36': 'Vela',
+    '37': 'Embarcación recreo', '40': 'Alta velocidad', '41': 'Alta velocidad',
+    '42': 'Alta velocidad', '43': 'Alta velocidad', '44': 'Alta velocidad',
+    '50': 'Práctico', '51': 'SAR', '52': 'Remolcador', '53': 'Balizamiento',
+    '54': 'Anticontaminación', '55': 'Agente autoridad', '58': 'Médico',
+    '60': 'Pasaje', '61': 'Pasaje', '62': 'Pasaje', '63': 'Pasaje', '69': 'Pasaje',
+    '70': 'Carga', '71': 'Carga', '72': 'Carga', '73': 'Carga', '79': 'Carga',
+    '80': 'Tanquero', '81': 'Tanquero', '82': 'Tanquero', '83': 'Tanquero', '89': 'Tanquero',
+    '90': 'Otro', '99': 'Otro',
+}
+
+def _ais_type_name(type_code):
+    if not type_code:
+        return 'Desconocido'
+    code = str(type_code).strip()
+    if code in AIS_TYPE_NAMES:
+        return AIS_TYPE_NAMES[code]
+    # Try prefix match
+    prefix = code[:2] if len(code) >= 2 else code
+    if prefix in AIS_TYPE_NAMES:
+        return AIS_TYPE_NAMES[prefix]
+    return f'Tipo {code}'
+
 def _classify_threat(vessel):
     """Classify vessel threat level: ROJO/AMARILLO/VERDE"""
     name = (vessel.get('name') or '').strip().upper()
@@ -471,7 +498,7 @@ def _classify_threat(vessel):
         return 'ROJO'
     if not name or name in ('DESCONOCIDO', 'UNKNOWN', ''):
         return 'AMARILLO'
-    if vtype in {'', '-', 'UNKNOWN', '0'}:
+    if vtype in {'', '-', 'UNKNOWN', '0', 'NONE'}:
         return 'AMARILLO'
     return 'VERDE'
 
@@ -509,8 +536,10 @@ def fetch_vigilancia():
 
         threat = _classify_threat(v)
         status = _vessel_status(v)
+        type_name = _ais_type_name(v.get('type'))
         vessels_enriched.append({
             **v,
+            'type_name': type_name,
             'amenaza': threat,
             'estado': status,
             'history': _ais_history.get(mmsi, []),
