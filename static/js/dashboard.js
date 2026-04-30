@@ -1,4 +1,5 @@
 const DASH_LABELS = {
+    hoy:'VENTANA METEOROLÓGICA HOY',
     meteo:'METEOROLOGÍA', oleaje:'OLEAJE Y CORRIENTES', mareas:'MAREAS',
     ais:'TRÁFICO MARÍTIMO (AIS)', alertas:'ALERTAS Y AVISOS',
     prediccion:'PREDICCIÓN 7 DÍAS', calidad:'CALIDAD DEL AIRE',
@@ -58,6 +59,7 @@ function switchDashTab(tab) {
 }
 
 const renders = {
+    hoy: renderHoy,
     meteo: renderMeteo, oleaje: renderOleaje, mareas: renderMareas,
     ais: renderAIS, alertas: renderAlertas, prediccion: renderPrediccion, calidad: renderCalidad,
     vigilancia: renderVigilancia, pesca: renderPesca,
@@ -417,6 +419,73 @@ function renderCalidad(data, el) {
         </div>`;
 }
 
+
+// =================== HOY — VENTANA METEOROLÓGICA ===================
+function renderHoy(data, el) {
+    const hours = data.hours || [];
+    const today = data.date || new Date().toISOString().slice(0,10);
+    const nowH = new Date().getHours();
+
+    if (!hours.length) {
+        el.innerHTML = `<p class="dash-section-title">Ventana meteorológica — ${today}</p>
+            <p style="color:rgba(255,255,255,0.35);padding:0.5rem">No hay datos disponibles para hoy.</p>`;
+        return;
+    }
+
+    // Summary: best windows
+    const best = hours.filter(h => h.score >= 8);
+    const good = hours.filter(h => h.score >= 5 && h.score < 8);
+    const bad = hours.filter(h => h.score < 5);
+
+    const summaryHtml = `
+        <div class="dash-grid" style="margin-bottom:0.75rem">
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#22c55e">Horas excelentes</div>
+                <div class="dash-card-value" style="color:#22c55e">${best.length}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#f59e0b">Horas aceptables</div>
+                <div class="dash-card-value" style="color:#f59e0b">${good.length}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#ef4444">Horas malas</div>
+                <div class="dash-card-value" style="color:#ef4444">${bad.length}</div>
+            </div>
+        </div>`;
+
+    // Hour timeline
+    const timelineHtml = hours.map(h => {
+        const hNum = parseInt(h.time.split(':')[0]);
+        const isCurrent = hNum === nowH;
+        const border = isCurrent ? 'border: 2px solid white;' : '';
+        return `<div style="flex:1;min-width:38px;text-align:center;${border};border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.03)">
+            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">${esc(h.time)}</div>
+            <div style="width:100%;height:24px;background:${esc(h.color)};opacity:${0.3+h.score/14};border-radius:3px;margin:2px 0"></div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.4)">${h.wave_h}m</div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.35)">${h.wind}km</div>
+        </div>`;
+    }).join('');
+
+    // Best windows text
+    const bestWindowsText = best.length
+        ? best.map(h => esc(h.time)).slice(0,6).join(', ')
+        : 'Ninguna ventana ideal hoy';
+
+    el.innerHTML = `
+        <p class="dash-section-title">Ventana meteorológica — ${esc(today)}</p>
+        ${summaryHtml}
+        <div class="dash-card" style="margin-bottom:0.75rem">
+            <div class="dash-card-label">Mejores horas hoy</div>
+            <div style="font-size:0.85rem;color:#22c55e;margin-top:0.3rem">${bestWindowsText}</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-label" style="margin-bottom:0.5rem">Timeline 24h — color = condición (verde=excelente, rojo=mala)</div>
+            <div style="display:flex;gap:2px;overflow-x:auto;padding-bottom:4px">${timelineHtml}</div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:4px">
+                <span>Olas (m) debajo de la barra</span><span>Viento (km/h) bajo las olas</span>
+            </div>
+        </div>`;
+}
 
 // =================== VIGILANCIA ===================
 function renderVigilancia(data, el) {

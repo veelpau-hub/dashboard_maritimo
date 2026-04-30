@@ -817,11 +817,76 @@ def fetch_pesca():
         'reasons_bad': reasons_bad,
     }
 
+def fetch_hoy():
+    """Hour-by-hour conditions for today — sailing/fishing window analysis."""
+    from datetime import datetime, date
+    try:
+        r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
+            'latitude': 36.62, 'longitude': -6.35,
+            'hourly': 'wind_speed_10m,wind_gusts_10m,precipitation,weather_code',
+            'timezone': 'Europe/Madrid', 'forecast_days': 1
+        }, verify=False, timeout=10).json()
+        r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+            'latitude': 36.62, 'longitude': -6.35,
+            'hourly': 'wave_height,wave_period',
+            'timezone': 'Europe/Madrid', 'forecast_days': 1
+        }, verify=False, timeout=10).json()
+
+        hours = r_met['hourly']
+        marine = r_mar['hourly']
+        result_hours = []
+        today = date.today().isoformat()
+
+        for i, t in enumerate(hours['time']):
+            if not t.startswith(today):
+                continue
+            wind = (hours['wind_speed_10m'] or [0]*24)[i] or 0
+            gusts = (hours['wind_gusts_10m'] or [0]*24)[i] or 0
+            precip = (hours['precipitation'] or [0]*24)[i] or 0
+            code = (hours['weather_code'] or [0]*24)[i] or 0
+            wave_h = (marine['wave_height'] or [0]*24)[i] if i < len(marine.get('wave_height',[])  ) else 0
+            wave_p = (marine['wave_period'] or [0]*24)[i] if i < len(marine.get('wave_period',[])) else 0
+            if wave_h is None: wave_h = 0
+            if wave_p is None: wave_p = 0
+
+            # Compute window score
+            score = 0
+            if wind < 15: score += 3
+            elif wind < 25: score += 2
+            elif wind < 35: score += 1
+            if wave_h < 0.8: score += 3
+            elif wave_h < 1.5: score += 2
+            elif wave_h < 2.5: score += 1
+            if precip < 0.5: score += 2
+            elif precip < 2: score += 1
+            bad_codes = {80,81,82,95,96,99,73,75,77}
+            if code not in bad_codes: score += 2
+
+            color = '#22c55e' if score >= 8 else '#f59e0b' if score >= 5 else '#ef4444'
+
+            result_hours.append({
+                'time': t[11:],
+                'wind': round(wind, 1),
+                'gusts': round(gusts, 1),
+                'wave_h': round(wave_h, 2),
+                'wave_p': round(wave_p, 1),
+                'precip': round(precip, 2),
+                'code': code,
+                'score': score,
+                'color': color,
+            })
+
+        return {'hours': result_hours, 'date': today}
+    except Exception as e:
+        logging.error(f'fetch_hoy: {e}')
+        return {'hours': [], 'error': str(e)}
+
 _DASH_FETCHERS = {
     'meteo': fetch_meteo, 'oleaje': fetch_oleaje, 'mareas': fetch_mareas,
     'ais': fetch_ais, 'alertas': fetch_alertas,
     'prediccion': fetch_prediccion, 'calidad': fetch_calidad,
     'vigilancia': fetch_vigilancia, 'pesca': fetch_pesca,
+    'hoy': fetch_hoy,
 }
 
 # --- RUTAS ---
