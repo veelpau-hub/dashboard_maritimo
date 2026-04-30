@@ -501,74 +501,163 @@ body {
 
 .card-metrica { min-height: 110px; }
 
-@media (max-width: 768px) {
+/* ===================== HAMBURGER BUTTON (hidden on desktop) ===================== */
+.hamburger-btn {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    width: 40px;
+    height: 40px;
+    background: #0d1520;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.8);
+    font-size: 1rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.hamburger-btn:hover { background: rgba(74,200,232,0.12); }
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 149;
+}
+.sidebar-overlay.visible { display: block; }
+
+/* ===================== TABLET 768-1200: sidebar icon-only ===================== */
+@media (min-width: 768px) and (max-width: 1200px) {
+    body { padding: 0 12px; gap: 0.5rem; }
+
+    .sidebar { padding: 0.5rem; gap: 0.5rem; }
+
+    /* Hide labels in submenu, show only icons */
+    .submenu-btn span.submenu-label { display: none; }
+    .submenu { width: 56px; padding: 0.5rem; gap: 0.5rem; }
+    .submenu-btn { padding: 0.6rem; justify-content: center; }
+
+    .metricas { grid-template-columns: repeat(3, 1fr); }
+    .forecast-grid { grid-template-columns: repeat(4, 1fr); }
+
+    .ad-banner { display: none; }
+}
+
+/* ===================== MOBILE <768px: hamburger + overlay sidebar ===================== */
+@media (max-width: 767px) {
     body {
         flex-direction: column;
         padding: 0;
         gap: 0;
+        overflow: hidden;
+        height: 100vh;
     }
 
+    /* Hamburger visible */
+    .hamburger-btn { display: flex; }
+
+    /* Sidebar slides in from left as overlay */
     .sidebar {
         position: fixed;
+        top: 0;
+        left: 0;
         bottom: 0;
-        left: 0;
-        right: 0;
+        width: 220px;
+        height: 100vh;
+        flex-direction: column;
+        border-radius: 0 16px 16px 0;
+        padding: 1rem 0.75rem;
+        padding-top: 60px;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+        gap: 0.4rem;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* Sidebar buttons with labels on mobile */
+    .sidebar-btn {
         width: 100%;
-        flex-direction: row;
-        justify-content: space-around;
-        border-radius: 16px 16px 0 0;
-        padding: 0.75rem 1rem;
-        z-index: 100;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0 0.75rem;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        text-align: left;
+        justify-content: flex-start;
+    }
+    .sidebar-btn::after {
+        content: attr(data-label);
+        font-size: 0.8rem;
+        color: inherit;
     }
 
+    /* Submenu as horizontal scrollable row at top */
     .submenu {
         position: fixed;
-        bottom: 72px;
+        top: 54px;
         left: 0;
         right: 0;
         flex-direction: row;
-        justify-content: space-around;
-        border-radius: 16px 16px 0 0;
-        padding: 0.75rem;
-    }
-
-    .panel {
-        width: 100%;
-        height: calc(100vh - 72px);
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
         border-radius: 0;
-        overflow-y: auto;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        padding: 0.4rem 0.75rem;
+        gap: 0.4rem;
+        z-index: 90;
+        scrollbar-width: none;
     }
-
-    .panel-derecho {
-        display: none;
-    }
-
-    .metricas {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .submenu {
-        position: fixed;
-        bottom: 72px;
-        left: 0;
-        right: 0;
-        flex-direction: row;
-        justify-content: space-around;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        border-radius: 16px 16px 0 0;
-        border-bottom: none;
-        padding: 0.75rem 1rem;
-        z-index: 99;
-        background: #0d1520;
-    }
-
+    .submenu::-webkit-scrollbar { display: none; }
+    .submenu.visible { display: flex; }
     .submenu-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
         width: auto;
         height: auto;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.72rem;
     }
+
+    /* Panels take full remaining height */
+    .panel {
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        overflow-y: auto;
+        padding-top: 54px; /* top bar height */
+    }
+    /* When submenu visible add extra top padding */
+    .panel.has-submenu { padding-top: 100px; }
+
+    .panel-derecho { display: none; }
+
+    .metricas { grid-template-columns: repeat(2, 1fr); }
+
+    /* Forecast: 2 cols mobile */
+    .forecast-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* AIS table: horizontal scroll */
+    .ais-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Hide ads on mobile */
+    .ad-banner, .ad-sidebar { display: none !important; }
+
+    /* Ko-fi moves to not overlap hamburger */
+    .kofi-banner { right: 12px; top: 12px; font-size: 0; padding: 0.35rem 0.5rem; }
+    .kofi-banner::after { content: '♥'; font-size: 1rem; }
 }
 
 /* AD SLOTS */

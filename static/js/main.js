@@ -14,7 +14,20 @@ const WIDGET_NOMBRES = {
     prediccion: 'Predicción 3 días'
 };
 
+// --- HAMBURGER / SIDEBAR MOBILE ---
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isOpen = sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible', isOpen);
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('visible');
+}
+
 function switchTab(tab) {
+    closeSidebar();
     document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
     document.getElementById('submenu').classList.remove('visible');
     document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
@@ -30,6 +43,8 @@ function switchTab(tab) {
         document.getElementById('submenu').classList.add('visible');
         const banner = document.getElementById('ad-banner-dash');
         if (banner) banner.style.display = 'flex';
+        // Mobile: mark panel as having submenu for extra padding
+        document.getElementById('panel-dashboard').classList.add('has-submenu');
     }
     if (tab === 'mapa') {
         if (window.mapa) window.mapa.resize();

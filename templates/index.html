@@ -11,20 +11,27 @@
 </head>
 <body>
 
+<!-- HAMBURGER BUTTON (mobile only) -->
+<button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
+<!-- Overlay for sidebar on mobile -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner">♥ Apoya el proyecto</a>
 
 <!-- SIDEBAR PRINCIPAL -->
-<div class="sidebar">
-    <button class="sidebar-btn active" onclick="switchTab('overview')">
+<div class="sidebar" id="sidebar">
+    <button class="sidebar-btn active" data-label="Overview" onclick="switchTab('overview')">
         <i class="fa-solid fa-ship"></i>
     </button>
-    <button class="sidebar-btn" onclick="switchTab('dashboard')">
+    <button class="sidebar-btn" data-label="Dashboard" onclick="switchTab('dashboard')">
         <i class="fa-solid fa-chart-bar"></i>
     </button>
-    <button class="sidebar-btn" onclick="switchTab('mapa')">
+    <button class="sidebar-btn" data-label="Mapa" onclick="switchTab('mapa')">
         <i class="fa-solid fa-map"></i>
     </button>
-    <button class="sidebar-btn" onclick="switchTab('settings')">
+    <button class="sidebar-btn" data-label="Ajustes" onclick="switchTab('settings')">
         <i class="fa-solid fa-gear"></i>
     </button>
 </div>
@@ -32,25 +39,31 @@
 <!-- SUBMENÚ DASHBOARD -->
 <div class="submenu" id="submenu">
     <button class="submenu-btn" onclick="switchDashTab('meteo')">
-        <i class="fa-solid fa-cloud-sun"></i> Meteorología
+        <i class="fa-solid fa-cloud-sun"></i><span class="submenu-label"> Meteorología</span>
     </button>
     <button class="submenu-btn" onclick="switchDashTab('oleaje')">
-        <i class="fa-solid fa-water"></i> Oleaje
+        <i class="fa-solid fa-water"></i><span class="submenu-label"> Oleaje</span>
     </button>
     <button class="submenu-btn" onclick="switchDashTab('mareas')">
-        <i class="fa-solid fa-moon"></i> Mareas
+        <i class="fa-solid fa-moon"></i><span class="submenu-label"> Mareas</span>
     </button>
-    {% if has_ais %}<button class="submenu-btn" onclick="switchDashTab('ais')">
-        <i class="fa-solid fa-ship"></i> AIS
-    </button>{% endif %}
+    <button class="submenu-btn" onclick="switchDashTab('ais')">
+        <i class="fa-solid fa-ship"></i><span class="submenu-label"> AIS</span>
+    </button>
     <button class="submenu-btn" onclick="switchDashTab('alertas')">
-        <i class="fa-solid fa-triangle-exclamation"></i> Alertas
+        <i class="fa-solid fa-triangle-exclamation"></i><span class="submenu-label"> Alertas</span>
     </button>
     <button class="submenu-btn" onclick="switchDashTab('prediccion')">
-        <i class="fa-solid fa-calendar-days"></i> Predicción
+        <i class="fa-solid fa-calendar-days"></i><span class="submenu-label"> Predicción</span>
     </button>
     <button class="submenu-btn" onclick="switchDashTab('calidad')">
-        <i class="fa-solid fa-wind"></i> Calidad aire
+        <i class="fa-solid fa-wind"></i><span class="submenu-label"> Calidad aire</span>
+    </button>
+    <button class="submenu-btn" onclick="switchDashTab('vigilancia')">
+        <i class="fa-solid fa-shield-halved"></i><span class="submenu-label"> Vigilancia</span>
+    </button>
+    <button class="submenu-btn" onclick="switchDashTab('pesca')">
+        <i class="fa-solid fa-fish"></i><span class="submenu-label"> Pesca</span>
     </button>
 </div>
 

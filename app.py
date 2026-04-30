@@ -12,6 +12,7 @@ load_dotenv()
 urllib3.disable_warnings()
 
 AEMET_API_KEY = os.getenv('AEMET_API_KEY', '')
+AISHUB_USER = os.getenv('AISHUB_USER', '')
 
 import ais_stream
 ais_stream.start()

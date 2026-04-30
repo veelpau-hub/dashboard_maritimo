@@ -40,22 +40,26 @@ const renders = {
 
 function renderMeteo(data, el) {
     const step = 3;
-    const horas = data.time.filter((_,i) => i%step===0).map(t => t.substr(11,5));
-    const temps = data.temp.filter((_,i) => i%step===0);
-    const winds = data.wind.filter((_,i) => i%step===0);
+    const horas = (data.time||[]).filter((_,i) => i%step===0).map(t => t.substr(11,5));
+    const temps = (data.temp||[]).filter((_,i) => i%step===0);
+    const winds = (data.wind||[]).filter((_,i) => i%step===0);
     el.innerHTML = `
         <p class="dash-section-title">Temperatura y viento — 7 días</p>
         <div class="dash-chart-container" id="chart-temp" style="height:160px"></div>
         <div class="dash-chart-container" id="chart-wind" style="height:140px"></div>`;
-    drawLineChart('#chart-temp', horas, temps, '°C', '#4AC8E8');
-    drawLineChart('#chart-wind', horas, winds, 'km/h', '#f59e0b');
+    requestAnimationFrame(() => {
+        drawLineChart('#chart-temp', horas, temps, '°C', '#4AC8E8');
+        drawLineChart('#chart-wind', horas, winds, 'km/h', '#f59e0b');
+        observeChart('#chart-temp');
+        observeChart('#chart-wind');
+    });
 }
 
 function renderOleaje(data, el) {
     const step = 3;
-    const horas = data.time.filter((_,i) => i%step===0).map(t => t.substr(11,5));
-    const heights = data.height.filter((_,i) => i%step===0);
-    const current = data.height[new Date().getHours()] ?? data.height[0];
+    const horas = (data.time||[]).filter((_,i) => i%step===0).map(t => t.substr(11,5));
+    const heights = (data.height||[]).filter((_,i) => i%step===0);
+    const current = (data.height||[])[new Date().getHours()] ?? (data.height||[])[0];
     const tempAgua = data.temp_agua ? data.temp_agua.find(v => v !== null) : null;
     el.innerHTML = `
         <p class="dash-section-title">Oleaje — 7 días</p>
@@ -68,7 +72,10 @@ function renderOleaje(data, el) {
                 <div class="dash-card-value">${tempAgua.toFixed(1)}°</div></div>`:''}
         </div>
         <div class="dash-chart-container" id="chart-olas" style="height:160px"></div>`;
-    drawLineChart('#chart-olas', horas, heights, 'm', '#4AC8E8');
+    requestAnimationFrame(() => {
+        drawLineChart('#chart-olas', horas, heights, 'm', '#4AC8E8');
+        observeChart('#chart-olas');
+    });
 }
 
 function renderMareas(data, el) {
@@ -158,20 +165,22 @@ function drawLineChart(selector, labels, values, unit, color) {
     if (!el||!values?.length) return;
     const m={top:10,right:10,bottom:30,left:35};
     const w=el.clientWidth-m.left-m.right, h=el.clientHeight-m.top-m.bottom;
+    if (w <= 0 || h <= 0) return;
     d3.select(selector).select('svg').remove();
     const svg=d3.select(selector).append('svg')
         .attr('width',el.clientWidth).attr('height',el.clientHeight)
         .append('g').attr('transform',`translate(${m.left},${m.top})`);
     const x=d3.scalePoint().domain(labels).range([0,w]);
-    const y=d3.scaleLinear().domain([d3.min(values)*0.95,d3.max(values)*1.05]).range([h,0]);
+    const minV=d3.min(values)||0, maxV=d3.max(values)||1;
+    const y=d3.scaleLinear().domain([minV*0.95,maxV*1.05]).range([h,0]);
     const gradId=`g${selector.replace(/\W/g,'')}`;
     const defs=svg.append('defs');
     const grad=defs.append('linearGradient').attr('id',gradId)
         .attr('gradientUnits','userSpaceOnUse').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',h);
     grad.append('stop').attr('offset','0%').attr('stop-color',color).attr('stop-opacity',0.25);
     grad.append('stop').attr('offset','100%').attr('stop-color',color).attr('stop-opacity',0);
-    const area=d3.area().x((_,i)=>x(labels[i])).y0(h).y1(d=>y(d)).curve(d3.curveCatmullRom);
-    const line=d3.line().x((_,i)=>x(labels[i])).y(d=>y(d)).curve(d3.curveCatmullRom);
+    const area=d3.area().x((_,i)=>x(labels[i])||0).y0(h).y1(d=>y(d)).curve(d3.curveCatmullRom);
+    const line=d3.line().x((_,i)=>x(labels[i])||0).y(d=>y(d)).curve(d3.curveCatmullRom);
     svg.append('path').datum(values).attr('fill',`url(#${gradId})`).attr('d',area);
     svg.append('path').datum(values).attr('fill','none').attr('stroke',color).attr('stroke-width',1.5).attr('d',line);
     const every=Math.max(1,Math.floor(labels.length/8));
@@ -181,4 +190,23 @@ function drawLineChart(selector, labels, values, unit, color) {
     svg.append('g').call(d3.axisLeft(y).ticks(4))
         .selectAll('text').attr('fill','rgba(255,255,255,0.35)').attr('font-size','9px');
     svg.selectAll('.domain,.tick line').attr('stroke','rgba(255,255,255,0.08)');
+    // Store chart data for ResizeObserver redraws
+    el._chartData = {labels, values, unit, color};
+}
+
+// ResizeObserver: redraws all D3 charts when container resizes
+const _chartResizeObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+        const el = entry.target;
+        const d = el._chartData;
+        if (d) {
+            const sel = `#${el.id}`;
+            if (sel !== '#') drawLineChart(sel, d.labels, d.values, d.unit, d.color);
+        }
+    }
+});
+
+function observeChart(selector) {
+    const el = document.querySelector(selector);
+    if (el) _chartResizeObserver.observe(el);
 }
