@@ -92,6 +92,54 @@ Frontend:
 
 ---
 
+## Iteración 2 (2026-04-30, ~20:09-20:15 UTC)
+
+### Fase 2A — Crítica iter 2
+- Nuevos gaps: capas SST en mapa, skeleton sin transición suave, indicador LIVE, presión trend sin inicializar, destino/ETA en AIS
+- Actualizado docs/critique.md con iter 2 análisis
+
+### Fase 2B/2C deeper
+- AIS stream actualizado para capturar ShipStaticData (tipo, destino, calado, indicativo)
+- Suscripción ahora incluye PositionReport + ShipStaticData
+
+### Fase 3 iter 2 — Competitivas nuevas
+- Rosa de dirección del oleaje (D3 polar chart con flecha direccional y headless marker)
+- UV index + recomendación protección solar (5 niveles: Bajo/Moderado/Alto/Muy alto/Extremo)
+- Curva sinusoidal de mareas con coseno interpolation y línea de tiempo actual
+- LIVE badge pulsante en tabs AIS y Vigilancia
+- Skeleton loading animado al cambiar de sub-tab
+- Timestamp "Actualizado: HH:MM:SS" al pie de cada panel
+- AIS tabla con columna Destino (de ShipStaticData)
+
+### Iteración 3 (2026-04-30, ~20:15 UTC)
+
+#### Pesca iter 2
+- Solunar theory: 4 períodos diarios (2 mayores + 2 menores) desde cálculo astronómico puro
+- Integración tendencia barométrica en el scoring de pesca ("presión bajando → picada activa")
+- Iconos de especie por categoría en lugar de emoji genérico
+
+#### Meteo mejorado
+- Resumen de condiciones actuales en cards (temperatura, viento, presión, precipitación total)
+- Gráfico de presión barométrica (7 días, violeta)
+
+#### Presión trend
+- Bootstrap con datos históricos de 24h desde Open-Meteo en thread daemon al arrancar
+- El trend ya tiene datos reales desde el primer acceso
+
+### Iteración 4 (2026-04-30, ~20:15 UTC)
+
+#### AIS mejorado
+- Búsqueda por nombre de buque en tiempo real (input con filtrado inmediato)
+- Filtro por velocidad (todos / en movimiento / fondeados)
+- Contador de buques en título de la sección
+- Links a MarineTraffic por MMSI en todas las tablas
+
+#### Oleaje mejorado  
+- Categoría de energía de ola (calma/moderado/fuerte) calculada como H²×T
+- Período de ola con animación pulse sincronizada al período real (CSS keyframes variables)
+
+---
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)
