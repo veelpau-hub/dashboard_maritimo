@@ -74,37 +74,162 @@ function renderOleaje(data, el) {
     const heights = (data.height||[]).filter((_,i) => i%step===0);
     const current = (data.height||[])[new Date().getHours()] ?? (data.height||[])[0];
     const tempAgua = data.temp_agua ? data.temp_agua.find(v => v !== null) : null;
+    const period = (data.period||[]).find(v=>v) ?? 0;
+    // Direction for swell rose (use current direction)
+    const hourIdx = new Date().getHours();
+    const currentDir = (data.direction||[])[hourIdx] ?? (data.direction||[])[0] ?? 0;
+
     el.innerHTML = `
         <p class="dash-section-title">Oleaje — 7 días</p>
         <div class="dash-grid">
             <div class="dash-card"><div class="dash-card-label">Altura actual</div>
-                <div class="dash-card-value">${current?.toFixed(1)}m</div></div>
+                <div class="dash-card-value">${(current??0).toFixed(1)}m</div></div>
             <div class="dash-card"><div class="dash-card-label">Período</div>
-                <div class="dash-card-value">${(data.period?.find(v=>v)??0).toFixed(0)}s</div></div>
+                <div class="dash-card-value">${period.toFixed(0)}s</div></div>
             ${tempAgua!=null?`<div class="dash-card"><div class="dash-card-label">Temp. agua</div>
                 <div class="dash-card-value">${tempAgua.toFixed(1)}°</div></div>`:''}
+            <div class="dash-card" style="display:flex;flex-direction:column;align-items:center">
+                <div class="dash-card-label">Dirección oleaje</div>
+                <div id="swell-rose-container" style="width:80px;height:80px;margin-top:4px"></div>
+            </div>
         </div>
         <div class="dash-chart-container" id="chart-olas" style="height:160px"></div>`;
     requestAnimationFrame(() => {
         drawLineChart('#chart-olas', horas, heights, 'm', '#4AC8E8');
         observeChart('#chart-olas');
+        drawSwellRose('#swell-rose-container', currentDir, current??0);
     });
+}
+
+function drawSwellRose(selector, dirDeg, heightM) {
+    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!el) return;
+    const size = 78;
+    const cx = size/2, cy = size/2, r = 28;
+    d3.select(el).select('svg').remove();
+    const svg = d3.select(el).append('svg')
+        .attr('width', size).attr('height', size);
+
+    // Background circle
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',r)
+        .attr('fill','none').attr('stroke','rgba(255,255,255,0.1)').attr('stroke-width',1);
+
+    // Cardinal marks
+    ['N','E','S','O'].forEach((c,i) => {
+        const a = (i * 90 - 90) * Math.PI / 180;
+        svg.append('text')
+            .attr('x', cx + (r+8)*Math.cos(a)).attr('y', cy + (r+8)*Math.sin(a)+3)
+            .attr('text-anchor','middle').attr('fill', c==='N'?'#f59e0b':'rgba(255,255,255,0.3)')
+            .attr('font-size','8px').text(c);
+    });
+
+    // Arrow from direction
+    const rad = (dirDeg - 90) * Math.PI / 180;
+    const arrowLen = r * 0.8;
+    const hue = heightM < 1 ? 140 : heightM < 2 ? 50 : 0;
+    const arrowColor = `hsl(${hue},85%,60%)`;
+    const x2 = cx + arrowLen * Math.cos(rad);
+    const y2 = cy + arrowLen * Math.sin(rad);
+
+    svg.append('line')
+        .attr('x1', cx - (arrowLen*0.3)*Math.cos(rad))
+        .attr('y1', cy - (arrowLen*0.3)*Math.sin(rad))
+        .attr('x2', x2).attr('y2', y2)
+        .attr('stroke', arrowColor).attr('stroke-width',2.5)
+        .attr('marker-end', `url(#arr-${selector.replace(/[^a-z0-9]/gi,'')})`);
+
+    // Arrow head
+    const defs = svg.append('defs');
+    const markerId = `arr-${selector.replace(/[^a-z0-9]/gi,'')}`;
+    const marker = defs.append('marker').attr('id', markerId)
+        .attr('markerWidth',6).attr('markerHeight',6)
+        .attr('refX',3).attr('refY',3).attr('orient','auto');
+    marker.append('path').attr('d','M0,0 L0,6 L6,3 Z').attr('fill', arrowColor);
+
+    // Degree label
+    svg.append('text').attr('x',cx).attr('y',size-4)
+        .attr('text-anchor','middle').attr('fill','rgba(255,255,255,0.4)')
+        .attr('font-size','8px').text(`${Math.round(dirDeg)}°`);
 }
 
 function renderMareas(data, el) {
     const rows = (data.extremes||[]).map(e => `
         <div class="dash-card" style="flex-direction:row;align-items:center;gap:1rem;display:flex">
-            <span style="font-size:1.5rem">${e.type==='pleamar'?'↑':'↓'}</span>
+            <span style="font-size:1.5rem;color:${e.type==='pleamar'?'#4AC8E8':'#f59e0b'}">${e.type==='pleamar'?'↑':'↓'}</span>
             <div>
                 <div class="dash-card-label">${e.type==='pleamar'?'Pleamar':'Bajamar'}</div>
-                <div class="dash-card-value" style="font-size:1.1rem">${e.time}</div>
-                <div class="dash-card-sub">${e.height?.toFixed(1)}m</div>
+                <div class="dash-card-value" style="font-size:1.1rem">${esc(e.time)}</div>
+                <div class="dash-card-sub">${e.height!=null?e.height.toFixed(1)+'m':'-'}</div>
             </div>
         </div>`).join('');
     const note = data.source==='estimado'
-        ? '<p style="color:rgba(255,255,255,0.25);font-size:0.7rem;margin-top:0.5rem">⚠ Datos estimados. Configura la API de Puertos del Estado para datos oficiales.</p>'
+        ? '<p style="color:rgba(255,255,255,0.25);font-size:0.7rem;margin-top:0.5rem">⚠ Datos estimados. Configura la API de Puertos del Estado para datos reales.</p>'
         : '';
-    el.innerHTML = `<p class="dash-section-title">Mareas — hoy</p><div class="dash-grid">${rows}</div>${note}`;
+    el.innerHTML = `
+        <p class="dash-section-title">Mareas — hoy</p>
+        <div class="dash-grid">${rows}</div>
+        <div class="dash-chart-container" id="chart-mareas" style="height:140px"></div>
+        ${note}`;
+    requestAnimationFrame(() => {
+        drawTideCurve('#chart-mareas', data.extremes||[]);
+    });
+}
+
+function drawTideCurve(selector, extremes) {
+    const el = document.querySelector(selector);
+    if (!el || extremes.length < 2) return;
+    const m={top:10,right:10,bottom:30,left:35};
+    const W=el.clientWidth-m.left-m.right, H=el.clientHeight-m.top-m.bottom;
+    if (W<=0||H<=0) return;
+    d3.select(selector).select('svg').remove();
+    const svg=d3.select(selector).append('svg')
+        .attr('width',el.clientWidth).attr('height',el.clientHeight)
+        .append('g').attr('transform',`translate(${m.left},${m.top})`);
+    // Build synthetic tide data using cosine interpolation between extremes
+    const points = [];
+    for (let i=0; i<extremes.length-1; i++) {
+        const e1 = extremes[i], e2 = extremes[i+1];
+        try {
+            const t1 = parseTime(e1.time), t2 = parseTime(e2.time);
+            const h1 = e1.height, h2 = e2.height;
+            for (let step=0; step<=20; step++) {
+                const t = t1 + (t2-t1)*(step/20);
+                const frac = step/20;
+                const h = h1 + (h2-h1) * (1 - Math.cos(frac*Math.PI)) / 2;
+                points.push({t, h});
+            }
+        } catch(e){}
+    }
+    if (!points.length) return;
+    const now = new Date().getHours()*60+new Date().getMinutes();
+    const x=d3.scaleLinear().domain([0,1440]).range([0,W]);
+    const allH = points.map(p=>p.h);
+    const y=d3.scaleLinear().domain([0, Math.max(...allH)*1.1]).range([H,0]);
+    const area=d3.area().x(p=>x(p.t)).y0(H).y1(p=>y(p.h)).curve(d3.curveCatmullRom);
+    const line=d3.line().x(p=>x(p.t)).y(p=>y(p.h)).curve(d3.curveCatmullRom);
+    const grad=svg.append('defs').append('linearGradient').attr('id','tideGrad')
+        .attr('gradientUnits','userSpaceOnUse').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',H);
+    grad.append('stop').attr('offset','0%').attr('stop-color','#4AC8E8').attr('stop-opacity',0.3);
+    grad.append('stop').attr('offset','100%').attr('stop-color','#4AC8E8').attr('stop-opacity',0);
+    svg.append('path').datum(points).attr('fill','url(#tideGrad)').attr('d',area);
+    svg.append('path').datum(points).attr('fill','none').attr('stroke','#4AC8E8')
+        .attr('stroke-width',1.5).attr('d',line);
+    // Current time line
+    svg.append('line').attr('x1',x(now)).attr('y1',0).attr('x2',x(now)).attr('y2',H)
+        .attr('stroke','rgba(255,255,255,0.4)').attr('stroke-width',1).attr('stroke-dasharray','3,3');
+    // Time axis (every 6h)
+    svg.append('g').attr('transform',`translate(0,${H})`)
+        .call(d3.axisBottom(x).tickValues([0,360,720,1080,1440])
+            .tickFormat(v=>`${Math.floor(v/60).toString().padStart(2,'0')}:00`))
+        .selectAll('text').attr('fill','rgba(255,255,255,0.35)').attr('font-size','9px');
+    svg.append('g').call(d3.axisLeft(y).ticks(3).tickFormat(v=>v+'m'))
+        .selectAll('text').attr('fill','rgba(255,255,255,0.35)').attr('font-size','9px');
+    svg.selectAll('.domain,.tick line').attr('stroke','rgba(255,255,255,0.06)');
+}
+
+function parseTime(t) {
+    const p = (t||'').split(':');
+    return parseInt(p[0]||0)*60+parseInt(p[1]||0);
 }
 
 function renderAIS(data, el) {
@@ -162,14 +287,27 @@ function renderCalidad(data, el) {
     const aqi=data.aqi||0;
     const color=aqi<20?'#22c55e':aqi<40?'#84cc16':aqi<60?'#f59e0b':aqi<80?'#f97316':'#ef4444';
     const label=aqi<20?'Muy buena':aqi<40?'Buena':aqi<60?'Moderada':aqi<80?'Mala':'Muy mala';
+    // UV protection recommendations
+    const uv = data.uv || 0;
+    let uvLabel, uvColor, uvRec;
+    if (uv < 3) { uvLabel='Bajo'; uvColor='#22c55e'; uvRec='Sin protección necesaria'; }
+    else if (uv < 6) { uvLabel='Moderado'; uvColor='#f59e0b'; uvRec='Protector SPF 30+'; }
+    else if (uv < 8) { uvLabel='Alto'; uvColor='#f97316'; uvRec='SPF 50+, gorra, gafas'; }
+    else if (uv < 11) { uvLabel='Muy alto'; uvColor='#ef4444'; uvRec='SPF 50+, protección total'; }
+    else { uvLabel='Extremo'; uvColor='#9333ea'; uvRec='Evitar exposición directa'; }
+
     el.innerHTML=`
         <p class="dash-section-title">Calidad del aire — ahora</p>
         <div class="dash-grid">
             <div class="dash-card"><div class="dash-card-label">Índice AQI</div>
                 <div class="dash-card-value" style="color:${color}">${aqi}</div>
                 <div class="dash-card-sub">${label}</div></div>
-            <div class="dash-card"><div class="dash-card-label">UV</div>
-                <div class="dash-card-value">${data.uv?.toFixed(1)||'-'}</div></div>
+            <div class="dash-card">
+                <div class="dash-card-label">Índice UV</div>
+                <div class="dash-card-value" style="color:${uvColor}">${uv.toFixed(1)}</div>
+                <div class="dash-card-sub" style="color:${uvColor}">${uvLabel}</div>
+                <div class="dash-card-sub" style="font-size:0.68rem;margin-top:0.3rem">☀ ${esc(uvRec)}</div>
+            </div>
             <div class="dash-card"><div class="dash-card-label">PM2.5</div>
                 <div class="dash-card-value" style="font-size:1.1rem">${data.pm25?.toFixed(1)||'-'} μg/m³</div></div>
             <div class="dash-card"><div class="dash-card-label">PM10</div>
