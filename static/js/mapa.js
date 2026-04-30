@@ -229,6 +229,11 @@ function toggleMapLayer(layer) {
         const show = document.getElementById('toggle-waypoints')?.checked;
         document.querySelectorAll('.mapboxgl-marker')
             .forEach(m => m.style.display = show ? '' : 'none');
+        // Also toggle user waypoint markers
+        _userWpMarkers.forEach(m => {
+            const el = m.getElement();
+            if (el) el.style.display = show ? '' : 'none';
+        });
     }
     if (layer==='roz') {
         const vis = document.getElementById('toggle-roz')?.checked ? 'visible' : 'none';
@@ -240,6 +245,88 @@ function toggleMapLayer(layer) {
         toggleWindAnimation();
     }
 }
+
+// =================== WAYPOINTS MANAGER ===================
+let _userWaypoints = [];
+let _userWpMarkers = [];
+let _wpAddMode = false;
+let _wpSelectedPos = null;
+
+function openWaypointPanel() {
+    const panel = document.getElementById('waypoint-add-panel');
+    if (!panel) return;
+    _wpAddMode = !_wpAddMode;
+    panel.style.display = _wpAddMode ? 'block' : 'none';
+    if (_wpAddMode) {
+        mapa.getCanvas().style.cursor = 'crosshair';
+    } else {
+        mapa.getCanvas().style.cursor = '';
+        _wpSelectedPos = null;
+    }
+}
+
+mapa.on('click', e => {
+    if (!_wpAddMode) return;
+    _wpSelectedPos = {lat: e.lngLat.lat, lon: e.lngLat.lng};
+    const posEl = document.getElementById('wp-pos');
+    if (posEl) posEl.textContent = `${e.lngLat.lat.toFixed(4)}°N ${Math.abs(e.lngLat.lng).toFixed(4)}°W`;
+});
+
+function saveWaypoint() {
+    if (!_wpSelectedPos) {
+        alert('Haz clic en el mapa para seleccionar la posición primero.');
+        return;
+    }
+    const nombre = (document.getElementById('wp-nombre')?.value||'').trim() || 'Mi waypoint';
+    const desc = document.getElementById('wp-desc')?.value || '';
+    fetch('/api/waypoints', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            nombre, lat: _wpSelectedPos.lat, lon: _wpSelectedPos.lon,
+            descripcion: desc, color: '#f59e0b'
+        })
+    }).then(r => r.json())
+    .then(() => {
+        openWaypointPanel();  // close
+        loadUserWaypoints();  // refresh
+        if (document.getElementById('wp-nombre')) document.getElementById('wp-nombre').value = '';
+        if (document.getElementById('wp-desc')) document.getElementById('wp-desc').value = '';
+    })
+    .catch(() => alert('Error al guardar waypoint'));
+}
+
+function loadUserWaypoints() {
+    fetch('/api/waypoints').then(r => r.json()).then(data => {
+        // Remove old markers
+        _userWpMarkers.forEach(m => m.remove());
+        _userWpMarkers = [];
+        _userWaypoints = data.waypoints || [];
+        _userWaypoints.forEach(wp => {
+            const safeName = String(wp.nombre||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const safeDesc = String(wp.descripcion||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const marker = new mapboxgl.Marker({color: wp.color || '#f59e0b'})
+                .setLngLat([wp.lon, wp.lat])
+                .setPopup(new mapboxgl.Popup({offset:20})
+                    .setHTML(`<strong>${safeName}</strong><br>${safeDesc}<br>
+                        <small>${wp.lat.toFixed(4)}°N ${Math.abs(wp.lon).toFixed(4)}°W</small><br>
+                        <button onclick="deleteWaypointById(${wp.id})" style="color:#ef4444;background:none;border:none;cursor:pointer;font-size:0.75rem;padding:2px 0">Eliminar</button>`))
+                .addTo(mapa);
+            _userWpMarkers.push(marker);
+        });
+    }).catch(() => {});
+}
+
+function deleteWaypointById(id) {
+    fetch(`/api/waypoints/${id}`, {method: 'DELETE'})
+        .then(() => loadUserWaypoints())
+        .catch(() => {});
+}
+
+// Load user waypoints when map is ready
+mapa.on('load', () => {
+    setTimeout(loadUserWaypoints, 500);
+});
 
 function toggleMapStyle() {
     const sat = document.getElementById('toggle-satellite').checked;

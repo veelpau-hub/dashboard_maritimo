@@ -80,6 +80,48 @@ def init_db():
             widgets TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS waypoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            descripcion TEXT,
+            color TEXT DEFAULT '#4AC8E8',
+            creado TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# --- WAYPOINTS ---
+def get_waypoints():
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('SELECT id, nombre, lat, lon, descripcion, color, creado FROM waypoints ORDER BY id DESC')
+    rows = c.fetchall()
+    conn.close()
+    return [{'id': r[0], 'nombre': r[1], 'lat': r[2], 'lon': r[3],
+             'descripcion': r[4], 'color': r[5], 'creado': r[6]} for r in rows]
+
+def add_waypoint(nombre, lat, lon, descripcion='', color='#4AC8E8'):
+    # Sanitize inputs
+    nombre = str(nombre)[:50]
+    descripcion = str(descripcion)[:200]
+    color = color if (isinstance(color, str) and color.startswith('#') and len(color) <= 7) else '#4AC8E8'
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO waypoints (nombre, lat, lon, descripcion, color) VALUES (?,?,?,?,?)',
+              (nombre, float(lat), float(lon), descripcion, color))
+    conn.commit()
+    wp_id = c.lastrowid
+    conn.close()
+    return wp_id
+
+def delete_waypoint(wp_id):
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM waypoints WHERE id = ?', (int(wp_id),))
     conn.commit()
     conn.close()
 
@@ -810,6 +852,35 @@ def api_dashboard(tab):
 @app.route('/api/presion_trend')
 def api_presion_trend():
     return jsonify(get_presion_trend())
+
+@app.route('/api/waypoints', methods=['GET'])
+def api_get_waypoints():
+    return jsonify({'waypoints': get_waypoints()})
+
+@app.route('/api/waypoints', methods=['POST'])
+def api_add_waypoint():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    try:
+        lat = float(data.get('lat', 0))
+        lon = float(data.get('lon', 0))
+        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+            return jsonify({'error': 'Invalid coordinates'}), 400
+        wp_id = add_waypoint(
+            nombre=data.get('nombre', 'Waypoint'),
+            lat=lat, lon=lon,
+            descripcion=data.get('descripcion', ''),
+            color=data.get('color', '#4AC8E8')
+        )
+        return jsonify({'ok': True, 'id': wp_id})
+    except (ValueError, TypeError) as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/waypoints/<int:wp_id>', methods=['DELETE'])
+def api_delete_waypoint(wp_id):
+    delete_waypoint(wp_id)
+    return jsonify({'ok': True})
 
 @app.route('/debug')
 def debug():

@@ -63,6 +63,34 @@ def test_dashboard_vigilancia(client, monkeypatch):
     assert 'roz' in d
     assert 'total' in d
 
+def test_waypoints_crud(client):
+    # Create
+    r = client.post('/api/waypoints', json={
+        'nombre': 'Zona pesca test',
+        'lat': 36.62, 'lon': -6.35,
+        'descripcion': 'Test waypoint'
+    })
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['ok'] is True
+    assert 'id' in data
+    wp_id = data['id']
+
+    # List
+    r2 = client.get('/api/waypoints')
+    assert r2.status_code == 200
+    wps = r2.get_json()['waypoints']
+    assert any(w['id'] == wp_id for w in wps)
+
+    # Delete
+    r3 = client.delete(f'/api/waypoints/{wp_id}')
+    assert r3.status_code == 200
+    assert r3.get_json()['ok'] is True
+
+def test_waypoints_invalid_coords(client):
+    r = client.post('/api/waypoints', json={'nombre': 'Bad', 'lat': 999, 'lon': -6.35})
+    assert r.status_code == 400
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {
