@@ -1968,6 +1968,25 @@ def api_vigilancia_log():
     limit = min(int(request.args.get('limit', 50)), 200)
     return jsonify({'log': get_vigilancia_log(limit)})
 
+@app.route('/api/vigilancia_stats')
+def api_vigilancia_stats():
+    """Aggregate vigilancia log stats for last 7 days."""
+    from datetime import datetime, timezone, timedelta
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime('%Y-%m-%d')
+    c.execute('''SELECT amenaza, evento, COUNT(*) FROM vigilancia_log
+                 WHERE ts >= ? GROUP BY amenaza, evento ORDER BY amenaza, evento''', (cutoff,))
+    rows = c.fetchall()
+    conn.close()
+    stats = {}
+    for amenaza, evento, count in rows:
+        key = f'{amenaza}_{evento}'
+        stats[key] = {'amenaza': amenaza, 'evento': evento, 'count': count}
+    total = sum(v['count'] for v in stats.values())
+    rojos = sum(v['count'] for v in stats.values() if v['amenaza'] == 'ROJO')
+    return jsonify({'stats': list(stats.values()), 'total_7d': total, 'rojo_7d': rojos})
+
 # --- CAPTURAS ---
 @app.route('/api/capturas', methods=['GET'])
 def api_get_capturas():

@@ -315,14 +315,61 @@
         </div>
 
         <div class="settings-section">
+            <h3>Interfaz</h3>
+            <div class="settings-row">
+                <span>Pantalla completa</span>
+                <button onclick="toggleFullscreen()" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.25);border-radius:6px;color:#4AC8E8;font-size:0.75rem;padding:4px 12px;cursor:pointer" id="fullscreen-btn">Activar</button>
+            </div>
+            <div class="settings-row">
+                <span>Compartir ubicación</span>
+                <button onclick="compartirEstado()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.6);font-size:0.75rem;padding:4px 12px;cursor:pointer">Copiar URL</button>
+            </div>
+        </div>
+
+        <div class="settings-section">
             <h3>Acerca de</h3>
-            <div class="settings-row"><span>Versión</span><span style="color:rgba(255,255,255,0.35)">1.0.0</span></div>
+            <div class="settings-row"><span>Versión</span><span style="color:rgba(255,255,255,0.35)">2.4.0</span></div>
+            <div class="settings-row"><span>Iteraciones</span><span style="color:rgba(255,255,255,0.35)">24 features</span></div>
             <div class="settings-row"><span>Clima</span><span style="color:rgba(255,255,255,0.35)">Open-Meteo</span></div>
             <div class="settings-row"><span>Alertas</span><span style="color:rgba(255,255,255,0.35)">AEMET OpenData</span></div>
-            {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISHub</span></div>{% endif %}
+            {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISstream.io</span></div>{% endif %}
+            <div class="settings-row">
+                <span>Novedades</span>
+                <button onclick="mostrarChangelog()" style="background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.75rem;padding:4px 10px;cursor:pointer">Ver</button>
+            </div>
             <div class="settings-row">
                 <span>Apoya el proyecto</span>
                 <a href="https://ko-fi.com/veellab" target="_blank" style="color:#ff5e5b;font-size:0.8rem">Ko-fi ♥</a>
+            </div>
+        </div>
+
+        <!-- CHANGELOG MODAL -->
+        <div id="changelog-modal" class="modal-overlay" style="display:none">
+            <div style="background:#0d1520;border:1px solid rgba(74,200,232,0.2);border-radius:12px;padding:1.5rem;max-width:550px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+                <button onclick="document.getElementById('changelog-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer">✕</button>
+                <p style="color:#4AC8E8;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;margin-bottom:0.75rem">NOVEDADES v2.4.0</p>
+                <div style="font-size:0.75rem;color:rgba(255,255,255,0.7);line-height:1.6">
+                    <div style="color:#22c55e;font-weight:600;margin-bottom:0.4rem">Iters 14-24 — Mayo 2026</div>
+                    <ul style="margin:0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
+                        <li>Diario de capturas de pesca con condiciones meteorológicas automáticas</li>
+                        <li>Log de vigilancia con export CSV y detección de buques en zona ROZ</li>
+                        <li>Routing meteorológico: analiza condiciones en ruta A→B</li>
+                        <li>Corrientes oceánicas en tiempo real (Open-Meteo Marine)</li>
+                        <li>Tab Mañana: ventana meteorológica del día siguiente</li>
+                        <li>Briefing meteorológico diario en texto plano</li>
+                        <li>SST overlay en mapa: temperatura superficial del agua</li>
+                        <li>Puertos cercanos según geolocalización</li>
+                        <li>Score meteorológico 0-100 en overview</li>
+                        <li>Calendario visual de temporadas de pesca</li>
+                        <li>Análisis de interceptación: buques ROJO con rumbo a la base</li>
+                        <li>Whitelist de buques aprobados en vigilancia</li>
+                        <li>Toasts de alerta configurables (ola, viento, presión)</li>
+                        <li>Historial de condiciones 30 días con gráficos D3</li>
+                        <li>Widget mareas en overview con estado ENTRANTE/SALIENTE</li>
+                        <li>Rosa de vientos polar en tab meteorología</li>
+                        <li>Recordatorio automático de marea próxima</li>
+                    </ul>
+                </div>
             </div>
         </div>
 

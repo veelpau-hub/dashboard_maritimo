@@ -271,6 +271,53 @@ function renderSettingsWidgets() {
     });
 }
 
+// --- CHANGELOG ---
+function mostrarChangelog() {
+    const modal = document.getElementById('changelog-modal');
+    if (modal) modal.style.display = 'flex';
+}
+document.addEventListener('click', e => {
+    const modal = document.getElementById('changelog-modal');
+    if (modal && e.target === modal) modal.style.display = 'none';
+});
+
+// --- FULLSCREEN ---
+function toggleFullscreen() {
+    const btn = document.getElementById('fullscreen-btn');
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+            if (btn) btn.textContent = 'Desactivar';
+        }).catch(() => {});
+    } else {
+        document.exitFullscreen().then(() => {
+            if (btn) btn.textContent = 'Activar';
+        }).catch(() => {});
+    }
+}
+document.addEventListener('fullscreenchange', () => {
+    const btn = document.getElementById('fullscreen-btn');
+    if (btn) btn.textContent = document.fullscreenElement ? 'Desactivar' : 'Activar';
+});
+
+// --- COMPARTIR ESTADO ---
+function compartirEstado() {
+    const params = new URLSearchParams();
+    if (window.geoCoords) {
+        params.set('lat', window.geoCoords.lat.toFixed(4));
+        params.set('lon', window.geoCoords.lon.toFixed(4));
+    }
+    const url = window.location.origin + window.location.pathname + (params.toString() ? '?' + params : '');
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('URL copiada al portapapeles.', 'info', 3000);
+        }).catch(() => {
+            prompt('Copia esta URL:', url);
+        });
+    } else {
+        prompt('Copia esta URL:', url);
+    }
+}
+
 // --- ALERT THRESHOLDS (user-configurable) ---
 let alertSettings = {
     olaMax: parseFloat(localStorage.getItem('alert_ola_max') || '2.0'),

@@ -459,6 +459,26 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Polar bar chart: 16 sectores de 22.5°, radio = frecuencia de cada dirección
 - Complementa la rosa del oleaje ya existente
 
+---
+
+## Iteración 24 (2026-05-01, ~07:56 UTC)
+
+### Fase 2A — Versión y changelog
+- Settings dice "Versión 1.0.0" — llevar a 2.4.0 con lista de features principales
+- Añadir botón "Novedades" que muestra modal con changelog
+
+### Fase 2B — Vigilancia: estadísticas semanales
+- /api/vigilancia_stats: conteo de eventos de los últimos 7 días agrupados por amenaza/evento
+- Mostrado como resumen en el tab vigilancia
+
+### Fase 2C — Pesca: comparativa índice propio
+- Si el usuario tiene capturas registradas: calcular el índice de pesca promedio de los días de captura
+- Comparar con el índice actual y mostrar si hoy es "mejor/igual/peor que tus días de pesca"
+
+### Fase 3 — Fullscreen + share
+- Botón de pantalla completa (Fullscreen API) en la interfaz
+- Botón "Compartir estado" que crea una URL con los parámetros actuales (location, tab)
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

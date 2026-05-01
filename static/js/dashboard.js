@@ -733,27 +733,40 @@ function renderVigilancia(data, el) {
 function renderVigilanciaLog(el_id) {
     const container = document.getElementById(el_id);
     if (!container) return;
-    fetch('/api/vigilancia_log?limit=20')
-        .then(r => r.json())
-        .then(data => {
-            const log = data.log || [];
-            if (!log.length) {
-                container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem;padding:0.4rem 0">Sin incidencias registradas. El log se activa cuando se detectan buques ROJO/AMARILLO.</div>';
-                return;
-            }
-            const threatColors = {ROJO:'#ef4444', AMARILLO:'#f59e0b', VERDE:'#22c55e'};
-            const rows = log.map(e => {
-                const tc = threatColors[e.amenaza] || '#888';
-                return `<div style="display:flex;align-items:center;gap:0.6rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem">
-                    <span style="color:rgba(255,255,255,0.3);min-width:45px">${esc((e.ts||'').slice(11,16))}</span>
-                    <span style="background:${tc};color:white;font-size:0.58rem;padding:1px 5px;border-radius:8px;min-width:48px;text-align:center">${esc(e.amenaza||'?')}</span>
-                    <span style="color:rgba(255,255,255,0.7)">${esc(e.nombre||'?')}</span>
-                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem">${esc(e.evento||'')} ${e.velocidad ? '· ' + parseFloat(e.velocidad).toFixed(1) + ' kt' : ''}</span>
-                </div>`;
-            }).join('');
-            const csvBtnVigilancia = `<button onclick="exportVigilanciaCSV()" style="margin-top:0.5rem;background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.68rem;padding:3px 10px;cursor:pointer">Exportar CSV</button>`;
-            container.innerHTML = `<div>${rows}</div>${csvBtnVigilancia}`;
-            container._logData = log;
+    // Load stats and log in parallel
+    Promise.all([
+        fetch('/api/vigilancia_log?limit=20').then(r => r.json()),
+        fetch('/api/vigilancia_stats').then(r => r.json()),
+    ]).then(([logData, statsData]) => {
+        const data = logData;
+        // Prepend stats summary
+        const total7d = statsData.total_7d || 0;
+        const rojo7d = statsData.rojo_7d || 0;
+        const statsSummary = total7d > 0
+            ? `<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap">
+                <span style="font-size:0.68rem;background:rgba(255,255,255,0.05);border-radius:6px;padding:2px 8px;color:rgba(255,255,255,0.4)">${total7d} eventos (7d)</span>
+                ${rojo7d > 0 ? `<span style="font-size:0.68rem;background:rgba(239,68,68,0.1);border-radius:6px;padding:2px 8px;color:#ef4444">${rojo7d} ROJO (7d)</span>` : ''}
+               </div>`
+            : '';
+        // Log rendering
+        const log = data.log || [];
+        if (!log.length) {
+            container.innerHTML = `${statsSummary}<div style="color:rgba(255,255,255,0.25);font-size:0.78rem;padding:0.4rem 0">Sin incidencias registradas. El log se activa cuando se detectan buques ROJO/AMARILLO.</div>`;
+            return;
+        }
+        const threatColors = {ROJO:'#ef4444', AMARILLO:'#f59e0b', VERDE:'#22c55e'};
+        const rows = log.map(e => {
+            const tc = threatColors[e.amenaza] || '#888';
+            return `<div style="display:flex;align-items:center;gap:0.6rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem">
+                <span style="color:rgba(255,255,255,0.3);min-width:45px">${esc((e.ts||'').slice(11,16))}</span>
+                <span style="background:${tc};color:white;font-size:0.58rem;padding:1px 5px;border-radius:8px;min-width:48px;text-align:center">${esc(e.amenaza||'?')}</span>
+                <span style="color:rgba(255,255,255,0.7)">${esc(e.nombre||'?')}</span>
+                <span style="color:rgba(255,255,255,0.3);font-size:0.65rem">${esc(e.evento||'')} ${e.velocidad ? '· ' + parseFloat(e.velocidad).toFixed(1) + ' kt' : ''}</span>
+            </div>`;
+        }).join('');
+        const csvBtnVigilancia = `<button onclick="exportVigilanciaCSV()" style="margin-top:0.5rem;background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.68rem;padding:3px 10px;cursor:pointer">Exportar CSV</button>`;
+        container.innerHTML = `${statsSummary}<div>${rows}</div>${csvBtnVigilancia}`;
+        container._logData = log;
         })
         .catch(() => {
             container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem">Error cargando log.</div>';
