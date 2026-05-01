@@ -339,6 +339,45 @@ function toggleMapStyle() {
     });
 }
 
+// =================== SST OVERLAY ===================
+let _sstMarkers = [];
+
+function toggleSSTOverlay() {
+    const active = document.getElementById('toggle-sst')?.checked || false;
+    if (!active) {
+        _sstMarkers.forEach(m => m.remove());
+        _sstMarkers = [];
+        return;
+    }
+    // Fetch SST grid centered on current map center
+    const center = mapa.getCenter();
+    fetch(`/api/sst_grid?lat=${center.lat.toFixed(3)}&lon=${center.lng.toFixed(3)}`)
+        .then(r => r.json())
+        .then(data => {
+            _sstMarkers.forEach(m => m.remove());
+            _sstMarkers = [];
+            (data.grid || []).forEach(pt => {
+                const sst = pt.sst;
+                // Color: 14°C=blue, 18°C=cyan, 22°C=yellow, 26°C=red
+                const t = Math.max(0, Math.min(1, (sst - 14) / 12));
+                const r = Math.round(t * 220);
+                const b = Math.round((1-t) * 220);
+                const g = Math.round(Math.min(1, 2*t*(1-t) + t) * 150);
+                const color = `rgb(${r},${g},${b})`;
+
+                const el = document.createElement('div');
+                el.style.cssText = `width:36px;height:36px;background:${color};border-radius:50%;opacity:0.65;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700;border:1px solid rgba(255,255,255,0.3);cursor:default`;
+                el.textContent = sst.toFixed(1);
+                el.title = `SST: ${sst.toFixed(1)}°C`;
+                const m = new mapboxgl.Marker({element: el, anchor: 'center'})
+                    .setLngLat([pt.lon, pt.lat])
+                    .addTo(mapa);
+                _sstMarkers.push(m);
+            });
+        })
+        .catch(() => {});
+}
+
 // =================== ROUTING METEOROLÓGICO ===================
 let _routingMode = false;
 let _routingPoints = [];  // [{lat,lon}]

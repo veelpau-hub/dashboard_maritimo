@@ -281,6 +281,32 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 2. **AIS status indicator**: icono pulsante cuando el stream AIS está conectado vs desconectado
 3. **Ordenamiento tabla AIS/Vigilancia** por clic en cabeceras
 
+---
+
+## Iteración 17 (2026-05-01, ~07:39 UTC)
+
+### Fase 2A — Crítica iter 17
+- fetch_corrientes puede fallar si Open-Meteo no tiene ocean_current data para ese punto (la API devuelve datos vacíos para coords sin cobertura marina) — ya hay try/except pero el fallback puede mejorar
+- El routing endpoint hace 6 API calls (3 puntos × 2 APIs) lo que puede ser lento — cachear por 10min
+- La tabla AIS en el tab no muestra el tipo legible sino el código numérico — debería mostrar `type_name`
+- El widget mareas no muestra el coeficiente en el overview
+
+### Fase 2B — Vigilancia: export lista buques + tipo legible en AIS
+- Botón "Exportar CSV" en tab AIS para exportar snapshot actual de buques
+- Corrección: mostrar `type_name` en lugar de tipo numérico en tabla AIS
+
+### Fase 2C — Pesca: temperatura agua y profundidad
+- Añadir consejo de profundidad de pesca basado en temperatura del agua: <16°C = demersal fondo, 16-20°C = mixto, >20°C = pelágico superficie
+
+### Fase 3 — SST overlay en mapa + puertos cercanos
+1. **SST (Sea Surface Temperature) overlay**: grid de 5×5 puntos alrededor de Rota
+   - Backend: /api/sst_grid devuelve array de {lat, lon, sst} para pintar en mapa
+   - Frontend: círculos coloreados en mapa por temperatura (azul=frío, rojo=caliente)
+   - Toggle "🌊 SST" en map-controls
+2. **Puertos cercanos**: endpoint /api/puertos_cercanos?lat=X&lon=Y
+   - Lista de puertos/marinas del COASTAL_POINTS con distancia desde posición usuario
+   - Mostrado en overview cuando hay geolocalización activa
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

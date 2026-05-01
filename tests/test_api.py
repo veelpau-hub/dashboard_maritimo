@@ -187,6 +187,19 @@ def test_briefing_endpoint(client):
     d = r.get_json()
     assert 'briefing' in d or 'error' in d
 
+def test_puertos_cercanos(client):
+    r = client.get('/api/puertos_cercanos?lat=36.62&lon=-6.35')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'puertos' in d
+    assert len(d['puertos']) <= 5
+    # Rota should be the closest
+    assert d['puertos'][0]['name'] == 'Rota'
+
+def test_puertos_cercanos_missing_params(client):
+    r = client.get('/api/puertos_cercanos')
+    assert r.status_code == 400
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {

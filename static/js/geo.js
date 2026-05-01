@@ -35,6 +35,9 @@ function detectarUbicacion() {
                     if (btn) { btn.textContent = `📍 ${d.name}`; btn.disabled = false; }
                     if (typeof currentDashTab === 'string' && currentDashTab)
                         switchDashTab(currentDashTab);
+
+                    // Show nearby ports
+                    loadPuertosCercanos(latitude, longitude);
                 })
                 .catch(() => {
                     if (indicator) indicator.textContent = 'Error al localizar';
@@ -47,4 +50,26 @@ function detectarUbicacion() {
         },
         { timeout: 10000, maximumAge: 300000 }
     );
+}
+
+function loadPuertosCercanos(lat, lon) {
+    fetch(`/api/puertos_cercanos?lat=${lat}&lon=${lon}`)
+        .then(r => r.json())
+        .then(data => {
+            const puertos = data.puertos || [];
+            if (!puertos.length) return;
+            // Show in geo-indicator as tooltip or small pill list
+            let container = document.getElementById('puertos-cercanos');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'puertos-cercanos';
+                container.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:4px';
+                const geoBar = document.querySelector('.geo-bar');
+                if (geoBar) geoBar.after(container);
+            }
+            container.innerHTML = puertos.slice(0, 5).map(p =>
+                `<span style="font-size:0.65rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:2px 8px;color:rgba(255,255,255,0.55)" title="${p.distancia_km} km">${p.name} ${p.distancia_km}km</span>`
+            ).join('');
+        })
+        .catch(() => {});
 }

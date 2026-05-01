@@ -325,13 +325,14 @@ function renderAIS(data, el) {
 
     el.innerHTML = `
         <p class="dash-section-title">Buques en el área de Rota (~5 min retraso) — ${vessels.length} buques</p>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;align-items:center">
             <input id="ais-search" placeholder="Buscar por nombre..." style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.75rem;width:160px" oninput="filterAISTable()">
             <select id="ais-filter-speed" onchange="filterAISTable()" style="background:#0d1520;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.7);padding:4px 8px;font-size:0.73rem">
                 <option value="">Todos (velocidad)</option>
                 <option value="moving">En movimiento (>0.5kt)</option>
                 <option value="anchored">Fondeados</option>
             </select>
+            <button onclick="exportAISCSV()" style="background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.7rem;padding:4px 10px;cursor:pointer;margin-left:auto">Exportar CSV</button>
         </div>
         <div class="ais-table-wrap"><table class="ais-table" id="ais-main-table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>MMSI</th></tr></thead>
@@ -357,13 +358,31 @@ function renderAISRows(vessels) {
     if (!tbody) return;
     const rows = vessels.map(v=>`<tr>
         <td>${esc(v.name)}</td>
-        <td>${esc(String(v.type||'-'))}</td>
+        <td style="font-size:0.7rem">${esc(v.type_name || String(v.type||'-'))}</td>
         <td>${v.speed!=null?v.speed.toFixed(1)+' kt':'-'}</td>
         <td>${v.course!=null?v.course.toFixed(0)+'°':'-'}</td>
         <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.destination?esc(v.destination):'-'}</td>
         <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
         </tr>`).join('');
     tbody.innerHTML = rows || '<tr><td colspan="6" style="color:rgba(255,255,255,0.3);text-align:center">Sin resultados</td></tr>';
+}
+
+function exportAISCSV() {
+    const vessels = _aisAllVessels || [];
+    if (!vessels.length) { alert('Sin buques AIS para exportar'); return; }
+    const header = 'Nombre,Tipo,Velocidad_kt,Rumbo,Destino,MMSI,Lat,Lon\n';
+    const rows = vessels.map(v =>
+        [v.name||'', v.type_name||v.type||'', v.speed?.toFixed(1)||'',
+         v.course?.toFixed(0)||'', v.destination||'', v.mmsi||'',
+         v.lat?.toFixed(5)||'', v.lon?.toFixed(5)||''].join(',')
+    ).join('\n');
+    const blob = new Blob([header + rows], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ais_buques_${new Date().toISOString().slice(0,16).replace('T','_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function renderAlertas(data, el) {
@@ -714,6 +733,13 @@ function renderPesca(data, el) {
 
     const reasonsOk = (data.reasons_ok||[]).map(r => `<div style="color:#22c55e;font-size:0.75rem">✓ ${esc(r)}</div>`).join('');
     const reasonsBad = (data.reasons_bad||[]).map(r => `<div style="color:#ef4444;font-size:0.75rem">✗ ${esc(r)}</div>`).join('');
+    const profColor = esc(data.profundidad_color || '#4AC8E8');
+    const profHtml = data.profundidad_consejo
+        ? `<div class="dash-card" style="margin-bottom:0.75rem;border-left:3px solid ${profColor}">
+            <div class="dash-card-label">Recomendación de profundidad</div>
+            <div style="font-size:0.78rem;color:${profColor};margin-top:0.35rem">${esc(data.profundidad_consejo)}</div>
+           </div>`
+        : '';
 
     // Sparkline de temp agua
     const sparkData = data.temp_agua_sparkline || [];
@@ -756,6 +782,8 @@ function renderPesca(data, el) {
                 <div class="dash-card-value">${tempAgua}°C</div>
             </div>` : ''}
         </div>
+
+        ${profHtml}
 
         ${reasonsOk || reasonsBad ? `<div class="dash-card" style="margin-bottom:0.75rem">
             <div class="dash-card-label">Factores de condición</div>

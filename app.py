@@ -1054,6 +1054,22 @@ def fetch_pesca():
         for s in in_season
     ]
 
+    # Water temperature depth advice
+    temp_agua = datos.get('temp_agua')
+    if temp_agua is not None:
+        if temp_agua < 16:
+            profundidad_consejo = 'Agua fría — peces demersal en fondo (>15m). Técnicas de fondo recomendadas.'
+            profundidad_color = '#4AC8E8'
+        elif temp_agua < 20:
+            profundidad_consejo = 'Agua templada — mixto fondo/media agua. Todas las técnicas funcionan.'
+            profundidad_color = '#22c55e'
+        else:
+            profundidad_consejo = 'Agua cálida — peces pelágicos en superficie. Curricán y jigging superficial.'
+            profundidad_color = '#f59e0b'
+    else:
+        profundidad_consejo = None
+        profundidad_color = None
+
     return {
         'fishing_index': fishing_index,
         'go_nogo': {'go': go, 'limiter': limiter},
@@ -1066,6 +1082,8 @@ def fetch_pesca():
         'species_with_cebo': species_with_cebo,
         'temp_agua_sparkline': temps_agua[:7],
         'temp_agua_current': datos.get('temp_agua'),
+        'profundidad_consejo': profundidad_consejo,
+        'profundidad_color': profundidad_color,
         'reasons_ok': reasons_ok,
         'reasons_bad': reasons_bad,
     }
@@ -1491,6 +1509,53 @@ def service_worker():
     response.headers['Service-Worker-Allowed'] = '/'
     response.headers['Cache-Control'] = 'no-cache'
     return response
+
+@app.route('/api/sst_grid')
+def api_sst_grid():
+    """Sea Surface Temperature grid around Rota — 5×5 points."""
+    center_lat = float(request.args.get('lat', 36.62))
+    center_lon = float(request.args.get('lon', -6.35))
+    step = 0.15  # ~16km between points
+    grid_points = []
+    for dlat in [-2, -1, 0, 1, 2]:
+        for dlon in [-2, -1, 0, 1, 2]:
+            grid_points.append({
+                'lat': round(center_lat + dlat * step, 4),
+                'lon': round(center_lon + dlon * step, 4),
+            })
+
+    results = []
+    # Batch: use one API call with comma-separated lat/lon is not supported by Open-Meteo
+    # Use a reduced 3×3 grid to limit API calls (9 points)
+    grid_3x3 = [p for i, p in enumerate(grid_points) if i in [0,2,4,10,12,14,20,22,24]]
+    for pt in grid_3x3:
+        try:
+            r = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+                'latitude': pt['lat'], 'longitude': pt['lon'],
+                'current': 'sea_surface_temperature',
+                'timezone': 'auto',
+            }, verify=False, timeout=5).json()
+            sst = r.get('current', {}).get('sea_surface_temperature')
+            if sst is not None:
+                results.append({'lat': pt['lat'], 'lon': pt['lon'], 'sst': round(sst, 1)})
+        except Exception:
+            pass
+
+    return jsonify({'grid': results, 'center': {'lat': center_lat, 'lon': center_lon}})
+
+@app.route('/api/puertos_cercanos')
+def api_puertos_cercanos():
+    """Nearest coastal points (ports/marinas) from user position."""
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    if lat is None or lon is None:
+        return jsonify({'error': 'lat y lon requeridos'}), 400
+    points_with_dist = [
+        {**p, 'distancia_km': round(haversine(lat, lon, p['lat'], p['lon']), 1)}
+        for p in COASTAL_POINTS
+    ]
+    points_with_dist.sort(key=lambda x: x['distancia_km'])
+    return jsonify({'puertos': points_with_dist[:5]})
 
 @app.route('/api/ais_status')
 def api_ais_status():
