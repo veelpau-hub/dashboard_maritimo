@@ -266,6 +266,27 @@ def test_pesca_best_hours_detail(client, monkeypatch):
         assert 'hora' in d['best_hours_detail'][0]
         assert 'nota' in d['best_hours_detail'][0]
 
+def test_historial_condiciones_endpoint(client):
+    r = client.get('/api/historial_condiciones')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'dias' in d
+
+def test_historial_condiciones_limit(client):
+    r = client.get('/api/historial_condiciones?days=7')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert len(d['dias']) <= 7
+
+def test_dashboard_historial(client, monkeypatch):
+    import app as flask_app
+    monkeypatch.setitem(flask_app._DASH_FETCHERS, 'historial', lambda: {'dias': [], 'total': 0})
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/historial')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'dias' in d
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {

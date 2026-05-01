@@ -6,6 +6,7 @@ const DASH_LABELS = {
     vigilancia:'VIGILANCIA MARÍTIMA', pesca:'CONDICIONES DE PESCA',
     manana:'VENTANA METEOROLÓGICA MAÑANA',
     corrientes:'CORRIENTES OCEÁNICAS',
+    historial:'HISTORIAL DE CONDICIONES',
 };
 
 const WX_ICONS = {
@@ -66,6 +67,7 @@ const renders = {
     ais: renderAIS, alertas: renderAlertas, prediccion: renderPrediccion, calidad: renderCalidad,
     vigilancia: renderVigilancia, pesca: renderPesca,
     manana: renderManana, corrientes: renderCorrientes,
+    historial: renderHistorial,
 };
 
 // --- Escape helper to prevent XSS from external data ---
@@ -639,10 +641,16 @@ function renderVigilancia(data, el) {
         ${vesselRows}${oorSection}
 
         <p class="dash-section-title" style="margin-top:1rem">Log de incidencias</p>
-        <div id="vig-log-panel"></div>`;
+        <div id="vig-log-panel"></div>
 
-    // Load vigilancia log
-    requestAnimationFrame(() => renderVigilanciaLog('vig-log-panel'));
+        <p class="dash-section-title" style="margin-top:1rem">Buques aprobados (whitelist)</p>
+        <div id="buques-aprobados-panel"></div>`;
+
+    // Load vigilancia log and approved vessels
+    requestAnimationFrame(() => {
+        renderVigilanciaLog('vig-log-panel');
+        renderBuquesAprobados('buques-aprobados-panel');
+    });
 }
 
 function renderVigilanciaLog(el_id) {
@@ -853,6 +861,103 @@ function renderPesca(data, el) {
     }
     // Load captures panel
     requestAnimationFrame(() => renderCapturasPanel('capturas-panel'));
+}
+
+// =================== HISTORIAL DE CONDICIONES ===================
+function renderHistorial(data, el) {
+    const dias = data.dias || [];
+
+    if (!dias.length) {
+        el.innerHTML = `<p class="dash-section-title">Historial de condiciones</p>
+            <div class="dash-card">
+                <div class="dash-card-label">Sin datos históricos</div>
+                <div style="font-size:0.78rem;color:rgba(255,255,255,0.3);margin-top:0.4rem">
+                    El historial se registra automáticamente una vez al día. Vuelve mañana para ver el primer dato.
+                </div>
+            </div>`;
+        return;
+    }
+
+    const fechas = dias.map(d => d.fecha?.slice(5) || '');  // MM-DD
+    const olas = dias.map(d => d.ola_max);
+    const vientos = dias.map(d => d.viento_kmh);
+    const temps_agua = dias.map(d => d.temp_agua);
+    const presiones = dias.map(d => d.presion);
+
+    // Summary table
+    const tableRows = dias.slice().reverse().map(d => {
+        const score = d.ola_max > 2 || d.viento_kmh > 25 ? 'Malo' : d.ola_max > 1 ? 'Regular' : 'Bueno';
+        const scoreColor = score === 'Bueno' ? '#22c55e' : score === 'Regular' ? '#f59e0b' : '#ef4444';
+        return `<tr style="font-size:0.72rem">
+            <td style="color:rgba(255,255,255,0.6);padding:4px 6px">${esc(d.fecha||'')}</td>
+            <td style="text-align:center">${d.ola_max != null ? d.ola_max.toFixed(1) + 'm' : '-'}</td>
+            <td style="text-align:center">${d.viento_kmh != null ? d.viento_kmh.toFixed(0) + 'km/h' : '-'}</td>
+            <td style="text-align:center">${d.temp_agua != null ? d.temp_agua.toFixed(1) + '°C' : '-'}</td>
+            <td style="text-align:center">${d.presion != null ? d.presion.toFixed(0) + ' hPa' : '-'}</td>
+            <td style="color:${scoreColor};text-align:center;font-weight:600">${score}</td>
+        </tr>`;
+    }).join('');
+
+    el.innerHTML = `
+        <p class="dash-section-title">Historial de condiciones — últimos ${dias.length} días</p>
+        <div class="dash-chart-container" id="chart-hist-olas" style="height:100px"></div>
+        <div class="dash-chart-container" id="chart-hist-viento" style="height:90px"></div>
+        ${temps_agua.some(t=>t!=null) ? '<div class="dash-chart-container" id="chart-hist-temp-agua" style="height:90px"></div>' : ''}
+        <div style="overflow-x:auto;margin-top:0.75rem">
+            <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="font-size:0.65rem;color:rgba(255,255,255,0.4)">
+                    <th style="text-align:left;padding:4px 6px">Fecha</th>
+                    <th>Ola máx</th><th>Viento</th><th>T. agua</th><th>Presión</th><th>Cond.</th>
+                </tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>`;
+
+    requestAnimationFrame(() => {
+        drawLineChart('#chart-hist-olas', fechas, olas, 'm', '#4AC8E8');
+        drawLineChart('#chart-hist-viento', fechas, vientos, 'km/h', '#f59e0b');
+        observeChart('#chart-hist-olas');
+        observeChart('#chart-hist-viento');
+        if (temps_agua.some(t=>t!=null)) {
+            drawLineChart('#chart-hist-temp-agua', fechas, temps_agua, '°C', '#ef4444');
+            observeChart('#chart-hist-temp-agua');
+        }
+    });
+}
+
+// =================== BUQUES APROBADOS (panel in vigilancia) ===================
+function renderBuquesAprobados(el_id) {
+    const container = document.getElementById(el_id);
+    if (!container) return;
+    fetch('/api/buques_aprobados')
+        .then(r => r.json())
+        .then(data => {
+            const buques = data.buques || [];
+            if (!buques.length) {
+                container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem">Sin buques aprobados. Usa el botón "Aprobar" en la tabla para añadir buques de confianza.</div>';
+                return;
+            }
+            const rows = buques.map(b => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.72rem">
+                    <div>
+                        <span style="color:rgba(255,255,255,0.8)">${esc(b.nombre||b.mmsi)}</span>
+                        <span style="color:rgba(255,255,255,0.35);margin-left:8px">${esc(b.mmsi)}</span>
+                        ${b.motivo ? `<div style="color:rgba(255,255,255,0.3);font-size:0.62rem">${esc(b.motivo)}</div>` : ''}
+                    </div>
+                    <button onclick="revocarBuqueAprobado('${esc(b.mmsi)}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:5px;color:#ef4444;font-size:0.65rem;padding:2px 7px;cursor:pointer">Revocar</button>
+                </div>`).join('');
+            container.innerHTML = rows;
+        })
+        .catch(() => {
+            container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem">Error cargando lista.</div>';
+        });
+}
+
+function revocarBuqueAprobado(mmsi) {
+    if (!confirm(`¿Revocar aprobación del MMSI ${mmsi}?`)) return;
+    fetch(`/api/buques_aprobados/${encodeURIComponent(mmsi)}`, {method: 'DELETE'})
+        .then(() => renderBuquesAprobados('buques-aprobados-panel'))
+        .catch(() => {});
 }
 
 // =================== PESCA CALENDARIO DE TEMPORADAS ===================

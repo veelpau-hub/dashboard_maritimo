@@ -362,10 +362,34 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
   - En auto-refresh: ola > 2m (si era < 2m antes)
   - En vigilancia: aparece buque ROJO nuevo
 
+---
+
+## Iteración 20 (2026-05-01, ~07:48 UTC)
+
+### Fase 2A — Crítica deuda técnica iter 20
+- La función `_load_buques_aprobados()` se llama dos veces al inicio (en init_db y después del bloque capturas) — simplificar
+- El tab vigilancia no muestra la lista de buques aprobados — los usuarios no saben qué buques han aprobado
+- El calendario de pesca tiene el mismo data hardcoded en JS y Python — si cambia, hay que cambiar en dos sitios
+- El historial de condiciones sería el feature más diferenciador
+
+### Fase 2B — Vigilancia: gestión de aprobados en UI
+- Sección "Buques aprobados" al fondo del tab vigilancia con tabla nombre/mmsi/motivo/fecha
+- Botón "Revocar" en cada entrada para eliminarlos
+
+### Fase 2C — Historial de condiciones (snapshot diario)
+- Nueva tabla SQLite `historial_condiciones` (fecha, ola_max, viento_kmh, temp_agua, presion, beaufort)
+- Función `registrar_condiciones_diarias()` llamada en background thread una vez al día
+- Endpoint /api/historial_condiciones?days=7 → array de snapshots
+- Gráfico de líneas en un nuevo sub-tab "Historial"
+
+### Fase 3 — Sub-tab Historial de condiciones
+- Nuevo tab "Historial" en el submenu dashboard
+- Tres mini-gráficos D3: temperatura agua 7 días, ola max 7 días, viento 7 días
+- Tabla de los últimos 7 días con datos clave
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)
 - Datos boya real Cádiz (vs modelo Open-Meteo)
 - Batimetría overlay en el mapa
 - Exportar datos a CSV/PDF
-- Comparativa histórica (año anterior)

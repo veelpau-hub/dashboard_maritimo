@@ -105,6 +105,21 @@ def init_db():
         )
     ''')
     c.execute('''
+        CREATE TABLE IF NOT EXISTS historial_condiciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT UNIQUE,
+            ola_max REAL,
+            ola_media REAL,
+            viento_kmh REAL,
+            racha_kmh REAL,
+            temp_c REAL,
+            temp_agua REAL,
+            presion REAL,
+            beaufort INTEGER,
+            visibilidad REAL
+        )
+    ''')
+    c.execute('''
         CREATE TABLE IF NOT EXISTS buques_aprobados (
             mmsi TEXT PRIMARY KEY,
             nombre TEXT,
@@ -287,6 +302,63 @@ def get_capturas_stats():
             stats[sp]['total_kg'] = round(stats[sp]['total_kg'] + cap['peso_kg'], 2)
             stats[sp]['max_kg'] = round(max(stats[sp]['max_kg'], cap['peso_kg']), 2)
     return stats
+
+# --- HISTORIAL DE CONDICIONES ---
+def registrar_condicion_diaria():
+    """Snapshot today's conditions and store in SQLite. Called once daily."""
+    from datetime import date as _date_cls, datetime, timezone
+    try:
+        datos = get_datos_maritimos()
+        fecha = _date_cls.today().isoformat()
+        conn = sqlite3.connect('preferencias.db')
+        c = conn.cursor()
+        c.execute('''INSERT OR IGNORE INTO historial_condiciones
+                     (fecha, ola_max, ola_media, viento_kmh, racha_kmh, temp_c, temp_agua, presion, beaufort, visibilidad)
+                     VALUES (?,?,?,?,?,?,?,?,?,?)''',
+                  (fecha,
+                   datos.get('altura_max'), datos.get('altura_media'),
+                   datos.get('viento_kmh'), datos.get('racha_kmh'),
+                   datos.get('temperatura_c'), datos.get('temp_agua'),
+                   datos.get('presion'), datos.get('beaufort'),
+                   datos.get('visibilidad')))
+        conn.commit()
+        conn.close()
+        logging.info(f"Condiciones del día {fecha} registradas en historial")
+    except Exception as e:
+        logging.warning(f"Error registrando condiciones: {e}")
+
+def get_historial_condiciones(days=7):
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('''SELECT fecha, ola_max, ola_media, viento_kmh, racha_kmh, temp_c, temp_agua, presion, beaufort, visibilidad
+                 FROM historial_condiciones ORDER BY fecha DESC LIMIT ?''', (days,))
+    rows = c.fetchall()
+    conn.close()
+    return [{
+        'fecha': r[0], 'ola_max': r[1], 'ola_media': r[2],
+        'viento_kmh': r[3], 'racha_kmh': r[4],
+        'temp_c': r[5], 'temp_agua': r[6],
+        'presion': r[7], 'beaufort': r[8], 'visibilidad': r[9]
+    } for r in reversed(rows)]
+
+def fetch_historial():
+    """For dashboard tab."""
+    return {'dias': get_historial_condiciones(30), 'total': len(get_historial_condiciones(30))}
+
+def _daily_condition_recorder():
+    """Background thread that records daily conditions once at 08:00 local and then every 24h."""
+    import time as _time
+    from datetime import datetime as _dt
+    # Wait until next 08:00 local
+    while True:
+        now = _dt.now()
+        # Record current snapshot on first run
+        registrar_condicion_diaria()
+        # Sleep 24h
+        _time.sleep(86400)
+
+import threading as _threading2
+_threading2.Thread(target=_daily_condition_recorder, daemon=True, name='historial-cond').start()
 
 WIDGETS_DEFAULT = {
     'temperatura': True,
@@ -1435,7 +1507,7 @@ _DASH_FETCHERS = {
     'prediccion': fetch_prediccion, 'calidad': fetch_calidad,
     'vigilancia': fetch_vigilancia, 'pesca': fetch_pesca,
     'hoy': fetch_hoy, 'manana': fetch_manana,
-    'corrientes': fetch_corrientes,
+    'corrientes': fetch_corrientes, 'historial': fetch_historial,
 }
 
 # --- RUTAS ---
@@ -1849,6 +1921,11 @@ def api_delete_captura(cap_id):
     return jsonify({'ok': True})
 
 # --- ROUTING METEOROLÓGICO ---
+@app.route('/api/historial_condiciones')
+def api_historial_condiciones():
+    days = min(int(request.args.get('days', 30)), 90)
+    return jsonify({'dias': get_historial_condiciones(days)})
+
 @app.route('/api/buques_aprobados', methods=['GET'])
 def api_get_buques_aprobados():
     return jsonify({'buques': get_buques_aprobados()})
