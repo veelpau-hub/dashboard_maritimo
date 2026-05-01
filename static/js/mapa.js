@@ -328,6 +328,14 @@ mapa.on('load', () => {
     setTimeout(loadUserWaypoints, 500);
 });
 
+function centrarEnBuque(lat, lon) {
+    // Switch to map tab and fly to vessel
+    if (typeof switchTab === 'function') switchTab('mapa');
+    if (window.mapa) {
+        window.mapa.flyTo({center: [lon, lat], zoom: 14, pitch: 40, duration: 1500});
+    }
+}
+
 function toggleMapStyle() {
     const sat = document.getElementById('toggle-satellite').checked;
     mapa.setStyle(sat ? 'mapbox://styles/mapbox/satellite-streets-v12'

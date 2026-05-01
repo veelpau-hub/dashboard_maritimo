@@ -437,6 +437,28 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Se actualiza con el badge de alertas cada 5min
 - Si hay buques ROJO activos: tarjeta en rojo pulsante
 
+---
+
+## Iteración 23 (2026-05-01, ~07:54 UTC)
+
+### Fase 2A — Mejoras visuales y UX
+- El overview no tiene indicación visual clara de cuándo fue la última actualización global
+- El tab predicción podría mostrar mejor el dato de olas máximas (ya está en el backend desde iter 15)
+- El tab mareas tiene una curva pero no el coeficiente en el overview widget (lo tiene el widget de mareas pero el texto es muy pequeño)
+
+### Fase 2B — Vigilancia: clic para centrar mapa
+- Al hacer clic en una fila de la tabla → centra el mapa principal en las coordenadas del buque + zoom 13
+- Abre el tab mapa automáticamente
+
+### Fase 2C — Pesca: recordatorio de próxima marea
+- Función en pesca: compara hora actual con próxima pleamar/bajamar
+- Si pleamar en menos de 90 minutos → toast de aviso "Pleamar en X min — ventana de pesca apertura"
+
+### Fase 3 — Rosa de vientos D3 en meteorología
+- Añadir a renderMeteo una rosa de dirección de viento usando datos hourly (wind_dir 7 días)
+- Polar bar chart: 16 sectores de 22.5°, radio = frecuencia de cada dirección
+- Complementa la rosa del oleaje ya existente
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

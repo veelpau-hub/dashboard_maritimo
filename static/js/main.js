@@ -416,6 +416,28 @@ document.addEventListener('click', e => {
     if (modal && e.target === modal) modal.style.display = 'none';
 });
 
+// --- MAREA REMINDER (fishing alert) ---
+let _prevMareaCountdown = null;
+function checkMareaReminder(mareaData) {
+    if (!mareaData) return;
+    const countdown = mareaData.countdown;  // "01h 25m"
+    const proximo = mareaData.proximo_tipo;
+    if (!countdown || !proximo) return;
+    // Parse countdown to minutes
+    const match = countdown.match(/(\d+)h\s*(\d+)m/);
+    if (!match) return;
+    const mins = parseInt(match[1]) * 60 + parseInt(match[2]);
+    // Toast when <= 90 minutes to next extreme
+    if (mins <= 90 && mins > 60) {
+        const key = `marea_${Math.floor(Date.now()/1800000)}`; // every 30min
+        if (!_shownToasts?.has(key)) {
+            _shownToasts?.add(key);
+            const tipo = proximo === 'pleamar' ? 'Pleamar' : 'Bajamar';
+            showToast(`${tipo} en ${countdown}. Ventana de pesca óptima próxima.`, 'info', 8000);
+        }
+    }
+}
+
 // --- MAREAS ESTADO WIDGET (overview) ---
 function loadMareasEstado() {
     fetch('/api/mareas_estado')
@@ -438,6 +460,7 @@ function loadMareasEstado() {
                 const countdown = d.countdown ? ` en ${d.countdown}` : '';
                 nextText.textContent = d.proximo_time ? `${tipo} ${d.proximo_time}${h}${countdown}` : 'Sin datos';
             }
+            checkMareaReminder(d);
         })
         .catch(() => {});
 }

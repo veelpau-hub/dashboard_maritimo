@@ -114,6 +114,10 @@ function renderMeteo(data, el) {
             <div class="dash-card"><div class="dash-card-label">Humedad</div><div class="dash-card-value">${curHumidity}%</div></div>
             <div class="dash-card"><div class="dash-card-label">Visibilidad</div><div class="dash-card-value">${curVisKm} km</div></div>
             <div class="dash-card"><div class="dash-card-label">Precip. 7d</div><div class="dash-card-value" style="font-size:1.1rem">${totalPrecip} mm</div></div>
+            <div class="dash-card" style="display:flex;flex-direction:column;align-items:center">
+                <div class="dash-card-label">Rosa de vientos</div>
+                <div id="wind-rose-container" style="width:130px;height:130px;margin-top:4px"></div>
+            </div>
         </div>
         <div class="dash-chart-container" id="chart-temp" style="height:130px"></div>
         <div class="dash-chart-container" id="chart-wind" style="height:110px"></div>
@@ -125,6 +129,9 @@ function renderMeteo(data, el) {
         observeChart('#chart-temp');
         observeChart('#chart-wind');
         observeChart('#chart-press');
+        // Wind rose
+        const windDirs = (data.wind_dir||[]).filter((_,i) => i%step===0);
+        drawWindRose('#wind-rose-container', data.wind_dir || []);
     });
 }
 
@@ -171,6 +178,67 @@ function renderOleaje(data, el) {
         observeChart('#chart-olas');
         drawSwellRose('#swell-rose-container', currentDir, current??0);
     });
+}
+
+function drawWindRose(selector, windDirs) {
+    const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!el || !windDirs || !windDirs.length) return;
+    const size = 130;
+    const cx = size/2, cy = size/2, maxR = 50;
+    d3.select(el).select('svg').remove();
+    const svg = d3.select(el).append('svg')
+        .attr('width', size).attr('height', size);
+
+    // 16 sectors of 22.5 degrees
+    const nSectors = 16;
+    const counts = new Array(nSectors).fill(0);
+    windDirs.filter(d => d != null).forEach(d => {
+        const sector = Math.round(d / 22.5) % nSectors;
+        counts[sector]++;
+    });
+    const maxCount = Math.max(...counts, 1);
+
+    const dirNames = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+
+    counts.forEach((count, i) => {
+        if (count === 0) return;
+        const angle = (i * 22.5 - 90) * Math.PI / 180;
+        const r = (count / maxCount) * maxR;
+        const spread = (22.5 * Math.PI / 180) / 2;
+        // Draw a slice
+        const a1 = angle - spread;
+        const a2 = angle + spread;
+        const x1 = cx + r * Math.cos(a1);
+        const y1 = cy + r * Math.sin(a1);
+        const x2 = cx + r * Math.cos(a2);
+        const y2 = cy + r * Math.sin(a2);
+        svg.append('path')
+            .attr('d', `M${cx},${cy} L${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2} Z`)
+            .attr('fill', '#4AC8E8')
+            .attr('opacity', 0.55 + 0.35 * (count / maxCount));
+    });
+
+    // Circle guides
+    [0.25, 0.5, 0.75, 1.0].forEach(frac => {
+        svg.append('circle').attr('cx', cx).attr('cy', cy)
+            .attr('r', frac * maxR).attr('fill', 'none')
+            .attr('stroke', 'rgba(255,255,255,0.06)').attr('stroke-width', 1);
+    });
+
+    // Cardinal labels
+    ['N','E','S','O'].forEach((c, i) => {
+        const a = (i * 90 - 90) * Math.PI / 180;
+        svg.append('text')
+            .attr('x', cx + (maxR+8)*Math.cos(a))
+            .attr('y', cy + (maxR+8)*Math.sin(a)+3)
+            .attr('text-anchor', 'middle').attr('fill', c === 'N' ? '#f59e0b' : 'rgba(255,255,255,0.3)')
+            .attr('font-size', '8px').text(c);
+    });
+
+    // Label
+    svg.append('text').attr('x', cx).attr('y', size - 4)
+        .attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,0.25)')
+        .attr('font-size', '8px').text('Rosa de vientos');
 }
 
 function drawSwellRose(selector, dirDeg, heightM) {
@@ -615,8 +683,11 @@ function renderVigilancia(data, el) {
             const aprobarBtn = v.amenaza === 'AMARILLO'
                 ? `<button onclick="aprobarBuque('${esc(safeMmsi)}','${esc(v.name||'')}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:4px;color:#22c55e;font-size:0.6rem;padding:1px 5px;cursor:pointer;margin-top:2px">Aprobar</button>`
                 : '';
+            const mapBtn = (v.lat && v.lon)
+                ? `<button onclick="centrarEnBuque(${v.lat},${v.lon})" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.2);border-radius:4px;color:#4AC8E8;font-size:0.6rem;padding:1px 5px;cursor:pointer;margin-top:2px;margin-left:2px">Mapa</button>`
+                : '';
             return `<tr data-threat="${esc(v.amenaza)}" data-status="${esc(v.estado)}">
-                <td><div>${esc(v.name)}${v.in_roz ? rozBadge : ''}</div>${aprobarBtn}</td>
+                <td><div>${esc(v.name)}${v.in_roz ? rozBadge : ''}</div>${aprobarBtn}${mapBtn}</td>
                 <td>${esc(v.type_name||v.type||'-')}</td>
                 <td>${threatBadge(v.amenaza)}</td>
                 <td>${statusBadge(v.estado)}</td>
