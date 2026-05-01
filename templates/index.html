@@ -97,6 +97,20 @@
 
     <div class="olas-container" id="grafico-olas"></div>
 
+    <!-- BOTÓN PARTE METEOROLÓGICO -->
+    <button class="config-btn" onclick="mostrarBriefing()" style="background:rgba(74,200,232,0.12);border-color:rgba(74,200,232,0.3);color:#4AC8E8;margin-bottom:0.4rem">
+        <i class="fa-solid fa-file-lines"></i> Parte diario
+    </button>
+
+    <!-- MODAL BRIEFING -->
+    <div id="briefing-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:none;align-items:center;justify-content:center">
+        <div style="background:#0d1520;border:1px solid rgba(74,200,232,0.2);border-radius:12px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+            <button onclick="document.getElementById('briefing-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer">✕</button>
+            <p style="color:#4AC8E8;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;margin-bottom:0.75rem">PARTE METEOROLÓGICO</p>
+            <pre id="briefing-text" style="font-family:monospace;font-size:0.78rem;color:rgba(255,255,255,0.8);white-space:pre-wrap;line-height:1.6">Cargando...</pre>
+        </div>
+    </div>
+
     <!-- BOTÓN CONFIGURAR -->
     <button class="config-btn" onclick="toggleConfig()">
         <i class="fa-solid fa-sliders"></i> Personalizar

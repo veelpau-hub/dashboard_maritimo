@@ -574,15 +574,32 @@ def fetch_prediccion(lat=36.62, lon=-6.35):
         'timezone': 'auto', 'forecast_days': 7
     }, verify=False, timeout=10).json()
     daily = r['daily']
+
+    # Fetch wave height max per day from marine API
+    wave_by_date = {}
+    try:
+        r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+            'latitude': lat, 'longitude': lon,
+            'daily': 'wave_height_max',
+            'timezone': 'auto', 'forecast_days': 7
+        }, verify=False, timeout=8).json()
+        mar_daily = r_mar.get('daily', {})
+        for i, d in enumerate(mar_daily.get('time', [])):
+            wh = mar_daily.get('wave_height_max', [None]*7)
+            wave_by_date[d] = wh[i] if i < len(wh) else None
+    except Exception:
+        pass
+
     days = []
     for i in range(7):
+        date_str = daily['time'][i]
         days.append({
-            'date': daily['time'][i],
+            'date': date_str,
             'temp_max': daily['temperature_2m_max'][i],
             'temp_min': daily['temperature_2m_min'][i],
             'precip': daily['precipitation_sum'][i],
             'wind_max': daily['wind_speed_10m_max'][i],
-            'wave_max': None,
+            'wave_max': wave_by_date.get(date_str),
             'code': daily['weather_code'][i],
             'sunrise': daily['sunrise'][i][11:],
             'sunset': daily['sunset'][i][11:],
@@ -651,6 +668,17 @@ def _ais_type_name(type_code):
         return AIS_TYPE_NAMES[prefix]
     return f'Tipo {code}'
 
+ROZ_CENTER_LAT = 36.6367
+ROZ_CENTER_LON = -6.3493
+ROZ_RADIUS_NM = 5.0
+
+def _vessel_in_roz(lat, lon):
+    """Returns True if vessel is within ROZ_RADIUS_NM of the ROZ center."""
+    if lat is None or lon is None:
+        return False
+    dist_km = haversine(ROZ_CENTER_LAT, ROZ_CENTER_LON, lat, lon)
+    return dist_km <= (ROZ_RADIUS_NM * 1.852)
+
 def _classify_threat(vessel):
     """Classify vessel threat level: ROJO/AMARILLO/VERDE"""
     name = (vessel.get('name') or '').strip().upper()
@@ -701,8 +729,13 @@ def fetch_vigilancia():
         status = _vessel_status(v)
         type_name = _ais_type_name(v.get('type'))
 
-        # Log event if this is a new ROJO/AMARILLO vessel
-        prev_threat = _vigilancia_seen.get(mmsi)
+        # Check if vessel is inside ROZ
+        in_roz = _vessel_in_roz(v.get('lat'), v.get('lon'))
+
+        # Log event if this is a new ROJO/AMARILLO vessel or new ROZ entry
+        prev_threat = _vigilancia_seen.get(mmsi, {}).get('threat')
+        prev_in_roz = _vigilancia_seen.get(mmsi, {}).get('in_roz', False)
+
         if threat in ('ROJO', 'AMARILLO') and prev_threat != threat:
             try:
                 log_vigilancia_event(
@@ -716,13 +749,29 @@ def fetch_vigilancia():
                 )
             except Exception:
                 pass
-        _vigilancia_seen[mmsi] = threat
+
+        if in_roz and not prev_in_roz:
+            try:
+                log_vigilancia_event(
+                    mmsi=mmsi,
+                    nombre=v.get('name', 'Desconocido'),
+                    amenaza=threat,
+                    evento='EN_ROZ',
+                    velocidad=v.get('speed'),
+                    lat=v.get('lat'),
+                    lon=v.get('lon'),
+                )
+            except Exception:
+                pass
+
+        _vigilancia_seen[mmsi] = {'threat': threat, 'in_roz': in_roz}
 
         vessels_enriched.append({
             **v,
             'type_name': type_name,
             'amenaza': threat,
             'estado': status,
+            'in_roz': in_roz,
             'history': _ais_history.get(mmsi, []),
         })
 
@@ -755,6 +804,7 @@ def fetch_vigilancia():
         'rojo': sum(1 for v in vessels_enriched if v['amenaza'] == 'ROJO'),
         'amarillo': sum(1 for v in vessels_enriched if v['amenaza'] == 'AMARILLO'),
         'verde': sum(1 for v in vessels_enriched if v['amenaza'] == 'VERDE'),
+        'en_roz': sum(1 for v in vessels_enriched if v.get('in_roz')),
     }
 
 # --- PESCA ---
@@ -813,6 +863,21 @@ SPECIES_CALENDAR = {
     'Langostino':  [4,5,6,7,8,9],
     'Pez espada':  [6,7,8,9],
     'Dentón':      [4,5,6,7,8,9,10],
+}
+
+CEBO_RECOMENDADO = {
+    'Dorada':      {'cebo': 'Berberecho, mejillón, calamar', 'tecnica': 'Fondo con plomada', 'profundidad': 'fondo'},
+    'Lubina':      {'cebo': 'Sardina, lanzón, gusano', 'tecnica': 'Curricán superficial o jigging', 'profundidad': 'superficie'},
+    'Atún':        {'cebo': 'Pez volador, calamar, engodo', 'tecnica': 'Curricán de altura', 'profundidad': 'superficie'},
+    'Pargo':       {'cebo': 'Calamar, sardina, cangrejo', 'tecnica': 'Fondo con palangrillo', 'profundidad': 'fondo'},
+    'Boquerón':    {'cebo': 'Calamarín, luz UV nocturna', 'tecnica': 'Sabikis superficial', 'profundidad': 'superficie'},
+    'Caballa':     {'cebo': 'Metal plateado, pluma, calamarín', 'tecnica': 'Jigging ligero', 'profundidad': 'media'},
+    'Lenguado':    {'cebo': 'Gusano ragworm, calamar tira', 'tecnica': 'Arrastre lento de fondo', 'profundidad': 'fondo'},
+    'Choco':       {'cebo': 'Pez vivo, señuelo choco', 'tecnica': 'Eging con jerking', 'profundidad': 'fondo'},
+    'Gamba':       {'cebo': 'Red de arrastre ligero', 'tecnica': 'Rastro de fondo', 'profundidad': 'fondo'},
+    'Langostino':  {'cebo': 'Red de cerco nocturna', 'tecnica': 'Red en fondos arenosos', 'profundidad': 'fondo'},
+    'Pez espada':  {'cebo': 'Calamar, pez volador', 'tecnica': 'Palangre de altura de noche', 'profundidad': 'media'},
+    'Dentón':      {'cebo': 'Calamar, sardina, pez', 'tecnica': 'Fondo en arrecife', 'profundidad': 'fondo'},
 }
 
 def _solunar_times(lat=36.637, lon=-6.362, date=None):
@@ -983,6 +1048,12 @@ def fetch_pesca():
     elif presion_trend.get('trend') == 'bajando':
         reasons_ok.append('Presion bajando — buena picada esperada')
 
+    # Cebo recommendations for in-season species
+    species_with_cebo = [
+        {**({'especie': s}), **CEBO_RECOMENDADO.get(s, {'cebo': '—', 'tecnica': '—', 'profundidad': '—'})}
+        for s in in_season
+    ]
+
     return {
         'fishing_index': fishing_index,
         'go_nogo': {'go': go, 'limiter': limiter},
@@ -992,6 +1063,7 @@ def fetch_pesca():
         'solunar': solunar,
         'species_in_season': in_season,
         'species_off_season': off_season,
+        'species_with_cebo': species_with_cebo,
         'temp_agua_sparkline': temps_agua[:7],
         'temp_agua_current': datos.get('temp_agua'),
         'reasons_ok': reasons_ok,

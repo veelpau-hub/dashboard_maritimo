@@ -223,6 +223,37 @@ Gaps nuevos identificados:
    - Mismo formato que 'Hoy' (fetch_hoy) pero para el día siguiente
    - Re-usar fetch_hoy con parámetro de fecha
 
+---
+
+## Iteración 15 (2026-05-01, ~07:33 UTC)
+
+### Fase 2A — Crítica iter 15
+- `/api/briefing` existe en backend pero NO está en el UI — brecha obvia
+- Predicción 7 días no muestra olas máximas (fetch_prediccion no incluye marine data)
+- El routing no tiene nota de unidades de velocidad ni conversión kt/km
+- El panel de corrientes es solo informativo — falta contexto "¿cómo afecta esto a mi barco?"
+- Recomendaciones de cebo por especie/condición serían muy populares entre pescadores recreativos
+- Fase lunar en pesca: cuarto creciente/menguante mejor para pesca que luna llena/nueva (dato incorrecto en la teoría solunar actual)
+- Overview widget 'mareas' no muestra el estado actual (entrante/saliente) — solo tabla de extremos
+
+### Fase 2B — Vigilancia: badge alertas + detección ROZ
+- Badge contador (ROJO + AMARILLO) en el submenu tab vigilancia
+- Función `_vessel_in_roz(lat, lon)`: detecta si un buque está DENTRO de la zona ROZ (5nm desde Rota)
+- Si buque DENTRO de ROZ → evento especial en log: 'EN_ROZ'
+- Widget overview: pequeño indicador "X buques en vigilancia activa" en la tarjeta de overview
+
+### Fase 2C — Pesca: recomendaciones de cebo
+- Dict `CEBO_RECOMENDADO` por especie en temporada + condición (fondo/superficie/media agua)
+- Función `get_cebo_recomendado(especie, wave_h, wind_kmh)` → cebo óptimo + técnica
+- Añadido a la tarjeta de cada especie en renderPesca
+
+### Fase 3 — Features competitivas
+1. **Briefing diario en Overview**: botón "Ver parte" que abre modal con texto del briefing
+2. **Predicción con olas máximas**: combinar Open-Meteo weather + Marine en fetch_prediccion
+3. **Mareas widget en overview**: mostrar estado actual (ENTRANTE/SALIENTE/PARADA) como badge en el widget de mareas
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

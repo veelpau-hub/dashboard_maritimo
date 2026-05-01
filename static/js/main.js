@@ -271,3 +271,58 @@ function renderSettingsWidgets() {
 setTempUnit(tempUnit);
 setWindUnit(windUnit);
 setLang(lang);
+
+// --- PARTE METEOROLÓGICO BRIEFING ---
+function mostrarBriefing() {
+    const modal = document.getElementById('briefing-modal');
+    const textEl = document.getElementById('briefing-text');
+    if (!modal || !textEl) return;
+    modal.style.display = 'flex';
+    textEl.textContent = 'Cargando parte meteorológico...';
+    fetch('/api/briefing')
+        .then(r => r.json())
+        .then(d => {
+            if (d.briefing) {
+                textEl.textContent = d.briefing;
+            } else if (d.error) {
+                textEl.textContent = 'Error: ' + d.error;
+            }
+        })
+        .catch(err => { textEl.textContent = 'Error de conexión.'; });
+}
+
+// Close briefing modal on backdrop click
+document.addEventListener('click', e => {
+    const modal = document.getElementById('briefing-modal');
+    if (modal && e.target === modal) modal.style.display = 'none';
+});
+
+// --- VIGILANCIA ALERT BADGE in submenu tab ---
+function loadVigilanciaAlerts() {
+    fetch('/api/vigilancia_log?limit=10')
+        .then(r => r.json())
+        .then(d => {
+            const log = d.log || [];
+            const recentAlerts = log.filter(e => {
+                // Count alerts in last 2h
+                const ts = new Date(e.ts + 'Z');
+                return (Date.now() - ts.getTime()) < 7200000 && e.amenaza !== 'VERDE';
+            });
+            // Find the vigilancia submenu button (9th button, index 8)
+            const vigBtn = document.querySelectorAll('.submenu-btn')[8];
+            if (!vigBtn) return;
+            // Remove old badge
+            const existing = vigBtn.querySelector('.vig-alert-badge');
+            if (existing) existing.remove();
+            if (recentAlerts.length > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'vig-alert-badge';
+                badge.style.cssText = 'background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px;font-weight:700;margin-left:3px';
+                badge.textContent = recentAlerts.length;
+                vigBtn.querySelector('.submenu-label')?.after(badge);
+            }
+        })
+        .catch(() => {});
+}
+loadVigilanciaAlerts();
+setInterval(loadVigilanciaAlerts, 300000);

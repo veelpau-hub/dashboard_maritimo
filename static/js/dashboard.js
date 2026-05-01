@@ -545,6 +545,7 @@ function renderVigilancia(data, el) {
             <div class="dash-card"><div class="dash-card-label" style="color:#ef4444">ROJO</div><div class="dash-card-value" style="color:#ef4444">${data.rojo||0}</div></div>
             <div class="dash-card"><div class="dash-card-label" style="color:#f59e0b">AMARILLO</div><div class="dash-card-value" style="color:#f59e0b">${data.amarillo||0}</div></div>
             <div class="dash-card"><div class="dash-card-label" style="color:#22c55e">VERDE</div><div class="dash-card-value" style="color:#22c55e">${data.verde||0}</div></div>
+            ${(data.en_roz||0) > 0 ? `<div class="dash-card" style="border-color:#ef4444;background:rgba(239,68,68,0.06)"><div class="dash-card-label" style="color:#ef4444">EN ZONA ROZ</div><div class="dash-card-value" style="color:#ef4444">${data.en_roz}</div></div>` : ''}
         </div>`;
 
     const rozInfo = data.roz ? `<div class="alert-card" style="border-color:#ef4444;background:rgba(239,68,68,0.05);margin-bottom:0.75rem">
@@ -572,9 +573,10 @@ function renderVigilancia(data, el) {
     if (!vessels.length) {
         vesselRows = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:0.5rem 0">Sin buques en el área de vigilancia.</p>';
     } else {
+        const rozBadge = '<span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:6px;font-weight:700;margin-left:4px">ROZ</span>';
         const rowsHtml = vessels.map(v => `
             <tr data-threat="${esc(v.amenaza)}" data-status="${esc(v.estado)}">
-                <td>${esc(v.name)}</td>
+                <td>${esc(v.name)}${v.in_roz ? rozBadge : ''}</td>
                 <td>${esc(v.type_name||v.type||'-')}</td>
                 <td>${threatBadge(v.amenaza)}</td>
                 <td>${statusBadge(v.estado)}</td>
@@ -688,11 +690,20 @@ function renderPesca(data, el) {
         'Caballa':'🐟','Lenguado':'🫓','Choco':'🦑','Gamba':'🦐','Langostino':'🦞',
         'Pez espada':'🐟','Dentón':'🐡'
     };
-    const speciesCards = species.map(s =>
-        `<div class="dash-card" style="text-align:center;padding:0.6rem">
-            <div style="font-size:1.2rem">${speciesIcons[s]||'🐟'}</div>
-            <div style="font-size:0.75rem;color:rgba(255,255,255,0.8);margin-top:0.25rem">${esc(s)}</div>
-            <div style="font-size:0.6rem;color:#22c55e;margin-top:0.1rem">EN TEMPORADA</div>
+    const speciesWithCebo = data.species_with_cebo || species.map(s => ({especie: s}));
+    const speciesCards = speciesWithCebo.map(sc =>
+        `<div class="dash-card" style="padding:0.6rem">
+            <div style="display:flex;align-items:center;gap:0.4rem">
+                <span style="font-size:1.1rem">${speciesIcons[sc.especie]||'🐟'}</span>
+                <div>
+                    <div style="font-size:0.75rem;color:rgba(255,255,255,0.85);font-weight:600">${esc(sc.especie)}</div>
+                    <div style="font-size:0.58rem;color:#22c55e">EN TEMPORADA</div>
+                </div>
+            </div>
+            ${sc.cebo ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:0.35rem">
+                <div>🪱 ${esc(sc.cebo)}</div>
+                <div style="margin-top:0.15rem">🎣 ${esc(sc.tecnica||'')}</div>
+            </div>` : ''}
          </div>`).join('');
 
     const hoursHtml = hours.map(h =>
