@@ -71,6 +71,12 @@
     <button class="submenu-btn" onclick="switchDashTab('pesca')">
         <i class="fa-solid fa-fish"></i><span class="submenu-label"> Pesca</span>
     </button>
+    <button class="submenu-btn" onclick="switchDashTab('manana')">
+        <i class="fa-solid fa-calendar-plus"></i><span class="submenu-label"> Mañana</span>
+    </button>
+    <button class="submenu-btn" onclick="switchDashTab('corrientes')">
+        <i class="fa-solid fa-arrows-rotate"></i><span class="submenu-label"> Corrientes</span>
+    </button>
 </div>
 
 <!-- PANEL OVERVIEW -->
@@ -188,6 +194,13 @@
             <button onclick="saveWaypoint()" style="background:#4AC8E8;border:none;border-radius:5px;color:white;font-size:0.7rem;padding:4px 10px;cursor:pointer;width:100%">Guardar</button>
         </div>
         <label class="map-toggle"><input type="checkbox" id="toggle-wind" onchange="toggleMapLayer('wind')"> 💨 Viento</label>
+        <label class="map-toggle"><input type="checkbox" id="toggle-routing" onchange="toggleRoutingMode()"> 🗺 Routing</label>
+        <div id="routing-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid rgba(255,255,255,0.07)">
+            <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-bottom:4px">Clic 1 = origen · Clic 2 = destino</p>
+            <div id="routing-status" style="font-size:0.65rem;color:#4AC8E8;margin-bottom:4px">Sin ruta seleccionada</div>
+            <button onclick="calcularRuta()" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.25);border-radius:6px;color:#4AC8E8;font-size:0.7rem;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px">Calcular ruta</button>
+            <button onclick="limpiarRuta()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.4);font-size:0.7rem;padding:3px 8px;cursor:pointer;width:100%">Limpiar</button>
+        </div>
         <hr style="border-color:rgba(255,255,255,0.07);margin:0.4rem 0">
         <label class="map-toggle"><input type="checkbox" id="toggle-satellite" onchange="toggleMapStyle()"> 🛰 Satélite</label>
     </div>

@@ -4,6 +4,8 @@ const DASH_LABELS = {
     ais:'TRÁFICO MARÍTIMO (AIS)', alertas:'ALERTAS Y AVISOS',
     prediccion:'PREDICCIÓN 7 DÍAS', calidad:'CALIDAD DEL AIRE',
     vigilancia:'VIGILANCIA MARÍTIMA', pesca:'CONDICIONES DE PESCA',
+    manana:'VENTANA METEOROLÓGICA MAÑANA',
+    corrientes:'CORRIENTES OCEÁNICAS',
 };
 
 const WX_ICONS = {
@@ -63,6 +65,7 @@ const renders = {
     meteo: renderMeteo, oleaje: renderOleaje, mareas: renderMareas,
     ais: renderAIS, alertas: renderAlertas, prediccion: renderPrediccion, calidad: renderCalidad,
     vigilancia: renderVigilancia, pesca: renderPesca,
+    manana: renderManana, corrientes: renderCorrientes,
 };
 
 // --- Escape helper to prevent XSS from external data ---
@@ -597,7 +600,61 @@ function renderVigilancia(data, el) {
         <p class="dash-section-title">Estado — Bahía de Cádiz / ROZ Rota</p>
         ${rozInfo}${summary}
         <p class="dash-section-title">Seguimiento multi-buque</p>
-        ${vesselRows}${oorSection}`;
+        ${vesselRows}${oorSection}
+
+        <p class="dash-section-title" style="margin-top:1rem">Log de incidencias</p>
+        <div id="vig-log-panel"></div>`;
+
+    // Load vigilancia log
+    requestAnimationFrame(() => renderVigilanciaLog('vig-log-panel'));
+}
+
+function renderVigilanciaLog(el_id) {
+    const container = document.getElementById(el_id);
+    if (!container) return;
+    fetch('/api/vigilancia_log?limit=20')
+        .then(r => r.json())
+        .then(data => {
+            const log = data.log || [];
+            if (!log.length) {
+                container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem;padding:0.4rem 0">Sin incidencias registradas. El log se activa cuando se detectan buques ROJO/AMARILLO.</div>';
+                return;
+            }
+            const threatColors = {ROJO:'#ef4444', AMARILLO:'#f59e0b', VERDE:'#22c55e'};
+            const rows = log.map(e => {
+                const tc = threatColors[e.amenaza] || '#888';
+                return `<div style="display:flex;align-items:center;gap:0.6rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem">
+                    <span style="color:rgba(255,255,255,0.3);min-width:45px">${esc((e.ts||'').slice(11,16))}</span>
+                    <span style="background:${tc};color:white;font-size:0.58rem;padding:1px 5px;border-radius:8px;min-width:48px;text-align:center">${esc(e.amenaza||'?')}</span>
+                    <span style="color:rgba(255,255,255,0.7)">${esc(e.nombre||'?')}</span>
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem">${esc(e.evento||'')} ${e.velocidad ? '· ' + parseFloat(e.velocidad).toFixed(1) + ' kt' : ''}</span>
+                </div>`;
+            }).join('');
+            const csvBtn = `<button onclick="exportVigilanciaCSV()" style="margin-top:0.5rem;background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.68rem;padding:3px 10px;cursor:pointer">⬇ Exportar CSV</button>`;
+            container.innerHTML = `<div>${rows}</div>${csvBtn}`;
+            container._logData = log;
+        })
+        .catch(() => {
+            container.innerHTML = '<div style="color:rgba(255,255,255,0.25);font-size:0.78rem">Error cargando log.</div>';
+        });
+}
+
+function exportVigilanciaCSV() {
+    const container = document.getElementById('vig-log-panel');
+    const log = container?._logData || [];
+    if (!log.length) { alert('Sin datos para exportar'); return; }
+    const header = 'Hora,MMSI,Nombre,Amenaza,Evento,Velocidad,Lat,Lon,Timestamp\n';
+    const rows = log.map(e =>
+        [e.ts?.slice(11,16), e.mmsi, e.nombre, e.amenaza, e.evento,
+         e.velocidad?.toFixed(1)||'', e.lat?.toFixed(4)||'', e.lon?.toFixed(4)||'', e.ts].join(',')
+    ).join('\n');
+    const blob = new Blob([header + rows], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vigilancia_log_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function filterVigTable() {
@@ -707,7 +764,10 @@ function renderPesca(data, el) {
         ${sparkData.length ? `<p class="dash-section-title">Temperatura del agua (últimas lecturas)</p>${sparkEl}` : ''}
 
         <p class="dash-section-title">Especies en temporada — Bahía de Cádiz</p>
-        <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${speciesCards}</div>`;
+        <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${speciesCards}</div>
+
+        <p class="dash-section-title" style="margin-top:1rem">Diario de capturas</p>
+        <div id="capturas-panel"></div>`;
 
     if (sparkData.length) {
         requestAnimationFrame(() => {
@@ -715,6 +775,8 @@ function renderPesca(data, el) {
             drawLineChart('#chart-temp-agua', labels, sparkData, '°C', '#4AC8E8');
         });
     }
+    // Load captures panel
+    requestAnimationFrame(() => renderCapturasPanel('capturas-panel'));
 }
 
 function drawLineChart(selector, labels, values, unit, color) {
@@ -766,4 +828,219 @@ const _chartResizeObserver = new ResizeObserver(entries => {
 function observeChart(selector) {
     const el = document.querySelector(selector);
     if (el) _chartResizeObserver.observe(el);
+}
+
+// =================== MAÑANA — VENTANA METEOROLÓGICA ===================
+function renderManana(data, el) {
+    // Re-use renderHoy logic but with different title
+    const hours = data.hours || [];
+    const tomorrow = data.date || '';
+    const nowH = -1; // no current-hour highlight for tomorrow
+
+    if (!hours.length) {
+        el.innerHTML = `<p class="dash-section-title">Ventana meteorológica mañana — ${esc(tomorrow)}</p>
+            <p style="color:rgba(255,255,255,0.35);padding:0.5rem">No hay datos disponibles para mañana.</p>`;
+        return;
+    }
+
+    const best = hours.filter(h => h.score >= 8);
+    const good = hours.filter(h => h.score >= 5 && h.score < 8);
+    const bad = hours.filter(h => h.score < 5);
+
+    const summaryHtml = `
+        <div class="dash-grid" style="margin-bottom:0.75rem">
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#22c55e">Horas excelentes</div>
+                <div class="dash-card-value" style="color:#22c55e">${best.length}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#f59e0b">Horas aceptables</div>
+                <div class="dash-card-value" style="color:#f59e0b">${good.length}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label" style="color:#ef4444">Horas malas</div>
+                <div class="dash-card-value" style="color:#ef4444">${bad.length}</div>
+            </div>
+        </div>`;
+
+    const timelineHtml = hours.map(h => `
+        <div style="flex:1;min-width:38px;text-align:center;border-radius:6px;padding:4px 2px;background:rgba(255,255,255,0.03)">
+            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">${esc(h.time)}</div>
+            <div style="width:100%;height:24px;background:${esc(h.color)};opacity:${0.3+h.score/14};border-radius:3px;margin:2px 0"></div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.4)">${h.wave_h}m</div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.35)">${h.wind}km</div>
+        </div>`).join('');
+
+    const bestWindowsText = best.length
+        ? best.map(h => esc(h.time)).slice(0, 6).join(', ')
+        : 'Ninguna ventana ideal mañana';
+
+    el.innerHTML = `
+        <p class="dash-section-title">Ventana meteorológica mañana — ${esc(tomorrow)}</p>
+        ${summaryHtml}
+        <div class="dash-card" style="margin-bottom:0.75rem">
+            <div class="dash-card-label">Mejores horas mañana</div>
+            <div style="font-size:0.85rem;color:#22c55e;margin-top:0.3rem">${bestWindowsText}</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-label" style="margin-bottom:0.5rem">Timeline 24h — color = condición (verde=excelente, rojo=mala)</div>
+            <div style="display:flex;gap:2px;overflow-x:auto;padding-bottom:4px">${timelineHtml}</div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:4px">
+                <span>Olas (m) debajo de la barra</span><span>Viento (km/h) bajo las olas</span>
+            </div>
+        </div>`;
+}
+
+// =================== CORRIENTES OCEÁNICAS ===================
+function renderCorrientes(data, el) {
+    if (data.error) {
+        el.innerHTML = `<p class="dash-section-title">Corrientes oceánicas</p>
+            <p style="color:rgba(255,255,255,0.35);padding:0.5rem">No hay datos de corrientes disponibles: ${esc(data.error)}</p>`;
+        return;
+    }
+    const vel = data.current_vel;
+    const dir = data.current_dir;
+    const samples = data.samples || [];
+
+    const velColor = vel == null ? 'rgba(255,255,255,0.3)' :
+                     vel < 0.5 ? '#22c55e' : vel < 1.0 ? '#f59e0b' : '#ef4444';
+    const velLabel = vel == null ? 'Sin datos' :
+                     vel < 0.5 ? 'Suave' : vel < 1.0 ? 'Moderada' : 'Fuerte';
+
+    let dirName = '-';
+    if (dir != null) {
+        const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+        dirName = dirs[Math.round(dir / 22.5) % 16];
+    }
+
+    // Sample timeline
+    const samplesHtml = samples.map(s => {
+        const sv = s.vel;
+        const sc = sv < 0.5 ? '#22c55e' : sv < 1.0 ? '#f59e0b' : '#ef4444';
+        return `<div style="flex:1;min-width:44px;text-align:center;background:rgba(255,255,255,0.03);border-radius:6px;padding:4px 2px">
+            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">${String(s.hour).padStart(2,'0')}:00</div>
+            <div style="font-size:0.8rem;font-weight:600;color:${sc}">${sv.toFixed(2)}</div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.35)">m/s</div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.25)">${s.dir.toFixed(0)}°</div>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+        <p class="dash-section-title">Corrientes oceánicas — Bahía de Cádiz</p>
+        <div class="dash-grid" style="margin-bottom:0.75rem">
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label">Velocidad actual</div>
+                <div class="dash-card-value" style="color:${velColor}">${vel != null ? vel.toFixed(2) + ' m/s' : '-'}</div>
+                <div class="dash-card-sub" style="color:${velColor}">${velLabel}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label">Dirección</div>
+                <div class="dash-card-value">${dir != null ? dir.toFixed(0) + '°' : '-'}</div>
+                <div class="dash-card-sub">${dirName}</div>
+            </div>
+            <div class="dash-card" style="text-align:center">
+                <div class="dash-card-label">Estado</div>
+                <div class="dash-card-value" style="color:${velColor};font-size:1rem">${velLabel}</div>
+                <div class="dash-card-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.25)">Open-Meteo Marine</div>
+            </div>
+        </div>
+        ${samples.length ? `<div class="dash-card">
+            <div class="dash-card-label" style="margin-bottom:0.5rem">Velocidad de corriente — cada 3h</div>
+            <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px">${samplesHtml}</div>
+        </div>` : ''}
+        <div class="dash-card" style="margin-top:0.75rem;font-size:0.7rem;color:rgba(255,255,255,0.3)">
+            Las corrientes superficiales afectan especialmente a embarcaciones ligeras y pesqueros.
+            Corrientes &gt; 1 m/s (2 kt) pueden dificultar el fondeo y aumentar el consumo de combustible.
+        </div>`;
+}
+
+// =================== PESCA — REGISTRO DE CAPTURAS ===================
+// Shown as sub-section inside renderPesca
+function renderCapturasPanel(el_id) {
+    const container = document.getElementById(el_id);
+    if (!container) return;
+
+    fetch('/api/capturas')
+        .then(r => r.json())
+        .then(data => {
+            const capturas = data.capturas || [];
+            const stats = data.stats || {};
+            const speciesOptions = [
+                'Dorada','Lubina','Atún','Pargo','Boquerón','Caballa',
+                'Lenguado','Choco','Gamba','Langostino','Pez espada','Dentón','Otra'
+            ].map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+            // Stats summary
+            const statsHtml = Object.entries(stats).map(([sp, st]) =>
+                `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.75rem">
+                    <span style="color:rgba(255,255,255,0.7)">${esc(sp)}</span>
+                    <span style="color:#4AC8E8">${st.count} capturas · ${st.total_kg.toFixed(1)} kg · máx ${st.max_kg.toFixed(1)} kg</span>
+                </div>`
+            ).join('') || '<div style="color:rgba(255,255,255,0.3);font-size:0.78rem">Sin capturas registradas aún.</div>';
+
+            // Recent catches list
+            const recentHtml = capturas.slice(0,5).map(cap => {
+                const cond = cap.condiciones || {};
+                const condStr = cond.olas_m != null ? `Olas: ${cond.olas_m}m · Viento: ${cond.viento_kmh} km/h` : '';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                    <div>
+                        <div style="font-size:0.78rem;color:rgba(255,255,255,0.85)">${esc(cap.especie)} ${cap.peso_kg ? `· ${cap.peso_kg} kg` : ''} ${cap.longitud_cm ? `· ${cap.longitud_cm} cm` : ''}</div>
+                        <div style="font-size:0.62rem;color:rgba(255,255,255,0.3)">${esc(cap.fecha)} ${condStr ? '· ' + esc(condStr) : ''}</div>
+                        ${cap.notas ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.4)">${esc(cap.notas)}</div>` : ''}
+                    </div>
+                    <button onclick="eliminarCaptura(${cap.id})" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:5px;color:#ef4444;font-size:0.65rem;padding:2px 6px;cursor:pointer">Borrar</button>
+                </div>`;
+            }).join('') || '<div style="color:rgba(255,255,255,0.3);font-size:0.78rem">Sin capturas recientes.</div>';
+
+            container.innerHTML = `
+                <div class="dash-card" style="margin-bottom:0.75rem">
+                    <div class="dash-card-label" style="margin-bottom:0.5rem">Registrar captura</div>
+                    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:flex-end">
+                        <select id="cap-especie" style="background:#0d1520;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.8);padding:4px 8px;font-size:0.75rem">${speciesOptions}</select>
+                        <input id="cap-peso" placeholder="Peso (kg)" type="number" step="0.1" min="0" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.75rem;width:90px">
+                        <input id="cap-long" placeholder="Long. (cm)" type="number" step="1" min="0" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.75rem;width:90px">
+                        <input id="cap-notas" placeholder="Notas" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.75rem;width:130px">
+                        <button onclick="guardarCaptura()" style="background:#4AC8E8;border:none;border-radius:6px;color:white;font-size:0.75rem;padding:5px 12px;cursor:pointer;font-weight:600">+ Registrar</button>
+                    </div>
+                </div>
+                ${Object.keys(stats).length ? `<div class="dash-card" style="margin-bottom:0.75rem">
+                    <div class="dash-card-label" style="margin-bottom:0.4rem">Estadísticas personales</div>
+                    ${statsHtml}
+                </div>` : ''}
+                ${capturas.length ? `<div class="dash-card">
+                    <div class="dash-card-label" style="margin-bottom:0.4rem">Últimas capturas</div>
+                    ${recentHtml}
+                    ${capturas.length > 5 ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:4px">Mostrando 5 de ${capturas.length} capturas</div>` : ''}
+                </div>` : `<div class="dash-card"><div class="dash-card-label">Sin capturas registradas</div><div style="font-size:0.78rem;color:rgba(255,255,255,0.3);margin-top:0.4rem">Usa el formulario de arriba para registrar tu primera captura. Las condiciones meteorológicas del momento se guardarán automáticamente.</div></div>`}`;
+        })
+        .catch(() => {
+            container.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:0.8rem">Error cargando capturas.</p>';
+        });
+}
+
+function guardarCaptura() {
+    const especie = document.getElementById('cap-especie')?.value || 'Otra';
+    const peso = parseFloat(document.getElementById('cap-peso')?.value) || null;
+    const longitud = parseFloat(document.getElementById('cap-long')?.value) || null;
+    const notas = document.getElementById('cap-notas')?.value || '';
+    fetch('/api/capturas', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({especie, peso_kg: peso, longitud_cm: longitud, notas})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) {
+            renderCapturasPanel('capturas-panel');
+            // Reset form
+            if (document.getElementById('cap-peso')) document.getElementById('cap-peso').value = '';
+            if (document.getElementById('cap-long')) document.getElementById('cap-long').value = '';
+            if (document.getElementById('cap-notas')) document.getElementById('cap-notas').value = '';
+        }
+    }).catch(() => {});
+}
+
+function eliminarCaptura(id) {
+    if (!confirm('¿Eliminar esta captura?')) return;
+    fetch(`/api/capturas/${id}`, {method: 'DELETE'})
+        .then(() => renderCapturasPanel('capturas-panel'))
+        .catch(() => {});
 }

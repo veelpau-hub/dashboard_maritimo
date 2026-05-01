@@ -176,14 +176,58 @@ Frontend:
 
 ---
 
+---
+
+## Iteración 14 (2026-05-01, ~07:28 UTC)
+
+### Estado al inicio
+- 13 iteraciones completadas, 13 commits
+- Iter 13: etiquetas Beaufort + descripciones WMO sea state en overview widgets
+- Pendientes: registro de capturas, routing meteorológico, corrientes oceánicas, log vigilancia
+
+### Fase 2A — Crítica iter 14
+Gaps nuevos identificados:
+- **Registro de capturas de pesca** — fishermen want to log catches with conditions (MarineTraffic Pro tiene esto)
+- **Routing meteorológico** — ruta A→B con timeline condiciones por hora (PredictWind lo tiene, nosotros no)
+- **Corrientes oceánicas overlay** — Open-Meteo Marine API tiene ocean_current_velocity/direction GRATIS
+- **Log de vigilancia** — eventos de entrada/salida en zona ROZ deberían guardarse en SQLite
+- **Briefing diario** — el endpoint /api/briefing existe pero no está expuesto en el UI
+- **Tab 'Mañana'** — igual que 'Hoy' pero para mañana, muy demandado por navegantes
+- **Predicción 10 días** — Open-Meteo permite 16 días, estamos mostrando solo 7
+
+### Fase 2B — Vigilancia mejorada
+- Log de incidencias SQLite: cada vez que un buque ROJO/AMARILLO nuevo aparece, se registra
+- Endpoint /api/vigilancia_log — devuelve últimas 50 entradas del log
+- Export CSV del log desde frontend con botón
+- Badge contador de alertas en pestaña vigilancia
+
+### Fase 2C — Registro de capturas de pesca
+- Tabla `capturas` en SQLite: id, especie, peso_kg, longitud_cm, lat, lon, fecha, condiciones_json
+- API REST: GET /api/capturas, POST /api/capturas, DELETE /api/capturas/{id}
+- Frontend: formulario de registro en tab pesca, lista de capturas con condiciones del día
+- Estadísticas: total capturas por especie, mejor mes para cada especie según historial propio
+
+### Fase 3 — Features competitivas
+1. **Corrientes oceánicas overlay** en mapa (Open-Meteo Marine API - gratis):
+   - Flechas de dirección + velocidad en la cuadrícula del mapa
+   - Toggle en map-controls
+   - Color según velocidad (azul claro → azul oscuro)
+
+2. **Routing meteorológico** básico:
+   - Usuario dibuja ruta de 2 puntos en el mapa (clic inicio, clic fin)
+   - Backend calcula condiciones hora a hora a lo largo de la ruta
+   - Timeline de 24h: viento, olas, puntuación en cada punto de la ruta
+   - Muestra ventana óptima de salida
+
+3. **Tab 'Mañana'** en el menú:
+   - Mismo formato que 'Hoy' (fetch_hoy) pero para el día siguiente
+   - Re-usar fetch_hoy con parámetro de fecha
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)
 - Datos boya real Cádiz (vs modelo Open-Meteo)
-- Rosa de dirección del oleaje (D3 polar chart)
-- Índice UV + recomendación solar
-- Capas de corrientes oceánicas (Copernicus CMEMS free)
-- PWA / modo offline con Service Worker
-- Waypoints guardables por el usuario
-- Routing meteorológico (línea de tiempo de condiciones a lo largo de una ruta)
 - Batimetría overlay en el mapa
+- Notificaciones push (viento > X kt, oleaje > Xm)
+- Exportar datos a CSV/PDF
+- Comparativa histórica (año anterior)

@@ -91,6 +91,73 @@ def test_waypoints_invalid_coords(client):
     r = client.post('/api/waypoints', json={'nombre': 'Bad', 'lat': 999, 'lon': -6.35})
     assert r.status_code == 400
 
+def test_capturas_crud(client):
+    # Create
+    r = client.post('/api/capturas', json={
+        'especie': 'Dorada',
+        'peso_kg': 1.5,
+        'longitud_cm': 35,
+        'notas': 'Test captura',
+    })
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['ok'] is True
+    assert 'id' in data
+    cap_id = data['id']
+
+    # List
+    r2 = client.get('/api/capturas')
+    assert r2.status_code == 200
+    d2 = r2.get_json()
+    assert 'capturas' in d2 and 'stats' in d2
+    assert any(c['id'] == cap_id for c in d2['capturas'])
+    assert 'Dorada' in d2['stats']
+    assert d2['stats']['Dorada']['count'] >= 1
+
+    # Delete
+    r3 = client.delete(f'/api/capturas/{cap_id}')
+    assert r3.status_code == 200
+    assert r3.get_json()['ok'] is True
+
+def test_vigilancia_log(client):
+    r = client.get('/api/vigilancia_log')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'log' in d
+
+def test_routing_endpoint(client, monkeypatch):
+    """Test the routing endpoint returns expected structure."""
+    import app as flask_app
+    # Mock fetch_routing to avoid real API calls
+    monkeypatch.setattr(flask_app, 'fetch_routing', lambda lat1, lon1, lat2, lon2: {
+        'from': {'lat': lat1, 'lon': lon1},
+        'to': {'lat': lat2, 'lon': lon2},
+        'distance_km': 15.0,
+        'points': [],
+        'best_departure': '09:00',
+    })
+    r = client.get('/api/routing?lat1=36.62&lon1=-6.35&lat2=36.72&lon2=-6.20')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'distance_km' in d
+    assert 'from' in d and 'to' in d
+
+def test_dashboard_manana(client, monkeypatch):
+    import app as flask_app
+    mock_manana = lambda: {
+        'hours': [{'time': '10:00', 'wind': 10.0, 'gusts': 15.0,
+                   'wave_h': 0.5, 'wave_p': 6.0, 'precip': 0.0,
+                   'code': 0, 'score': 9, 'color': '#22c55e'}],
+        'date': '2026-05-02',
+    }
+    monkeypatch.setitem(flask_app._DASH_FETCHERS, 'manana', mock_manana)
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/manana')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'hours' in d
+    assert len(d['hours']) == 1
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {

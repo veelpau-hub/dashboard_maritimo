@@ -91,6 +91,33 @@ def init_db():
             creado TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS vigilancia_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mmsi TEXT,
+            nombre TEXT,
+            amenaza TEXT,
+            evento TEXT,
+            velocidad REAL,
+            lat REAL,
+            lon REAL,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS capturas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            especie TEXT NOT NULL,
+            peso_kg REAL,
+            longitud_cm REAL,
+            lat REAL,
+            lon REAL,
+            fecha TEXT DEFAULT CURRENT_DATE,
+            notas TEXT,
+            condiciones TEXT,
+            creado TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -124,6 +151,86 @@ def delete_waypoint(wp_id):
     c.execute('DELETE FROM waypoints WHERE id = ?', (int(wp_id),))
     conn.commit()
     conn.close()
+
+# --- VIGILANCIA LOG ---
+_vigilancia_seen: dict = {}  # mmsi -> last amenaza level
+
+def log_vigilancia_event(mmsi, nombre, amenaza, evento, velocidad=None, lat=None, lon=None):
+    from datetime import datetime, timezone
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO vigilancia_log (mmsi, nombre, amenaza, evento, velocidad, lat, lon, ts)
+                 VALUES (?,?,?,?,?,?,?,?)''',
+              (str(mmsi)[:20], str(nombre)[:100], str(amenaza)[:10], str(evento)[:50],
+               velocidad, lat, lon,
+               datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')))
+    conn.commit()
+    conn.close()
+
+def get_vigilancia_log(limit=50):
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('''SELECT id, mmsi, nombre, amenaza, evento, velocidad, lat, lon, ts
+                 FROM vigilancia_log ORDER BY id DESC LIMIT ?''', (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return [{'id':r[0],'mmsi':r[1],'nombre':r[2],'amenaza':r[3],'evento':r[4],
+             'velocidad':r[5],'lat':r[6],'lon':r[7],'ts':r[8]} for r in rows]
+
+# --- CAPTURAS ---
+def get_capturas():
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('''SELECT id, especie, peso_kg, longitud_cm, lat, lon, fecha, notas, condiciones, creado
+                 FROM capturas ORDER BY id DESC''')
+    rows = c.fetchall()
+    conn.close()
+    return [{'id':r[0],'especie':r[1],'peso_kg':r[2],'longitud_cm':r[3],
+             'lat':r[4],'lon':r[5],'fecha':r[6],'notas':r[7],
+             'condiciones': json.loads(r[8]) if r[8] else {},
+             'creado':r[9]} for r in rows]
+
+def add_captura(especie, peso_kg=None, longitud_cm=None, lat=None, lon=None,
+                fecha=None, notas='', condiciones=None):
+    from datetime import date
+    especie = str(especie)[:50]
+    notas = str(notas)[:300]
+    fecha = str(fecha or date.today().isoformat())[:10]
+    cond_json = json.dumps(condiciones or {})
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO capturas (especie, peso_kg, longitud_cm, lat, lon, fecha, notas, condiciones)
+                 VALUES (?,?,?,?,?,?,?,?)''',
+              (especie,
+               float(peso_kg) if peso_kg is not None else None,
+               float(longitud_cm) if longitud_cm is not None else None,
+               float(lat) if lat is not None else None,
+               float(lon) if lon is not None else None,
+               fecha, notas, cond_json))
+    conn.commit()
+    cap_id = c.lastrowid
+    conn.close()
+    return cap_id
+
+def delete_captura(cap_id):
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM capturas WHERE id = ?', (int(cap_id),))
+    conn.commit()
+    conn.close()
+
+def get_capturas_stats():
+    capturas = get_capturas()
+    stats = {}
+    for cap in capturas:
+        sp = cap['especie']
+        if sp not in stats:
+            stats[sp] = {'count': 0, 'total_kg': 0.0, 'max_kg': 0.0}
+        stats[sp]['count'] += 1
+        if cap['peso_kg']:
+            stats[sp]['total_kg'] = round(stats[sp]['total_kg'] + cap['peso_kg'], 2)
+            stats[sp]['max_kg'] = round(max(stats[sp]['max_kg'], cap['peso_kg']), 2)
+    return stats
 
 WIDGETS_DEFAULT = {
     'temperatura': True,
@@ -593,6 +700,24 @@ def fetch_vigilancia():
         threat = _classify_threat(v)
         status = _vessel_status(v)
         type_name = _ais_type_name(v.get('type'))
+
+        # Log event if this is a new ROJO/AMARILLO vessel
+        prev_threat = _vigilancia_seen.get(mmsi)
+        if threat in ('ROJO', 'AMARILLO') and prev_threat != threat:
+            try:
+                log_vigilancia_event(
+                    mmsi=mmsi,
+                    nombre=v.get('name', 'Desconocido'),
+                    amenaza=threat,
+                    evento='DETECTADO' if prev_threat is None else 'CAMBIO_AMENAZA',
+                    velocidad=v.get('speed'),
+                    lat=v.get('lat'),
+                    lon=v.get('lon'),
+                )
+            except Exception:
+                pass
+        _vigilancia_seen[mmsi] = threat
+
         vessels_enriched.append({
             **v,
             'type_name': type_name,
@@ -873,6 +998,171 @@ def fetch_pesca():
         'reasons_bad': reasons_bad,
     }
 
+def fetch_corrientes(lat=36.62, lon=-6.35):
+    """Fetch ocean current data from Open-Meteo Marine API."""
+    try:
+        r = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+            'latitude': lat, 'longitude': lon,
+            'hourly': 'ocean_current_velocity,ocean_current_direction',
+            'timezone': 'auto', 'forecast_days': 1
+        }, verify=False, timeout=10).json()
+        hourly = r.get('hourly', {})
+        from datetime import datetime
+        hora = datetime.now().hour
+        velocidades = hourly.get('ocean_current_velocity', [])
+        direcciones = hourly.get('ocean_current_direction', [])
+        # Sample: take readings every 3h for the map overlay
+        samples = []
+        for i in range(0, min(len(velocidades), 24), 3):
+            v = velocidades[i]
+            d = direcciones[i] if i < len(direcciones) else None
+            if v is not None and d is not None:
+                samples.append({'vel': round(v, 2), 'dir': round(d, 1), 'hour': i})
+        current_vel = velocidades[hora] if hora < len(velocidades) else None
+        current_dir = direcciones[hora] if hora < len(direcciones) else None
+        return {
+            'current_vel': round(current_vel, 2) if current_vel is not None else None,
+            'current_dir': round(current_dir, 1) if current_dir is not None else None,
+            'samples': samples,
+            'times': hourly.get('time', []),
+        }
+    except Exception as e:
+        return {'current_vel': None, 'current_dir': None, 'samples': [], 'error': str(e)}
+
+def fetch_manana():
+    """Hour-by-hour conditions for tomorrow — same format as fetch_hoy."""
+    from datetime import datetime, date, timedelta
+    try:
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
+            'latitude': 36.62, 'longitude': -6.35,
+            'hourly': 'wind_speed_10m,wind_gusts_10m,precipitation,weather_code',
+            'timezone': 'Europe/Madrid', 'forecast_days': 2
+        }, verify=False, timeout=10).json()
+        r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+            'latitude': 36.62, 'longitude': -6.35,
+            'hourly': 'wave_height,wave_period',
+            'timezone': 'Europe/Madrid', 'forecast_days': 2
+        }, verify=False, timeout=10).json()
+
+        hours = r_met['hourly']
+        marine = r_mar['hourly']
+        result_hours = []
+
+        for i, t in enumerate(hours['time']):
+            if not t.startswith(tomorrow):
+                continue
+            wind = (hours['wind_speed_10m'] or [0]*48)[i] or 0
+            gusts = (hours['wind_gusts_10m'] or [0]*48)[i] or 0
+            precip = (hours['precipitation'] or [0]*48)[i] or 0
+            code = (hours['weather_code'] or [0]*48)[i] or 0
+            wave_h = (marine['wave_height'] or [0]*48)[i] if i < len(marine.get('wave_height',[])) else 0
+            wave_p = (marine['wave_period'] or [0]*48)[i] if i < len(marine.get('wave_period',[])) else 0
+            if wave_h is None: wave_h = 0
+            if wave_p is None: wave_p = 0
+
+            score = 0
+            if wind < 15: score += 3
+            elif wind < 25: score += 2
+            elif wind < 35: score += 1
+            if wave_h < 0.8: score += 3
+            elif wave_h < 1.5: score += 2
+            elif wave_h < 2.5: score += 1
+            if precip < 0.5: score += 2
+            elif precip < 2: score += 1
+            bad_codes = {80,81,82,95,96,99,73,75,77}
+            if code not in bad_codes: score += 2
+
+            color = '#22c55e' if score >= 8 else '#f59e0b' if score >= 5 else '#ef4444'
+            result_hours.append({
+                'time': t[11:],
+                'wind': round(wind, 1),
+                'gusts': round(gusts, 1),
+                'wave_h': round(wave_h, 2),
+                'wave_p': round(wave_p, 1),
+                'precip': round(precip, 2),
+                'code': code,
+                'score': score,
+                'color': color,
+            })
+        return {'hours': result_hours, 'date': tomorrow}
+    except Exception as e:
+        logging.error(f'fetch_manana: {e}')
+        return {'hours': [], 'error': str(e)}
+
+def fetch_routing(lat1=36.62, lon1=-6.35, lat2=36.72, lon2=-6.20):
+    """Meteorological routing: conditions along a route A→B for the next 24h.
+    Samples 5 intermediate points and returns per-hour conditions for each."""
+    import math as _math
+    try:
+        # Interpolate 5 points along the route
+        n_points = 5
+        points = []
+        for i in range(n_points):
+            frac = i / (n_points - 1)
+            plat = lat1 + (lat2 - lat1) * frac
+            plon = lon1 + (lon2 - lon1) * frac
+            points.append({'lat': round(plat, 4), 'lon': round(plon, 4)})
+
+        # For simplicity, fetch meteo for start, mid, end points only (3 API calls)
+        key_points = [points[0], points[2], points[4]]
+        route_data = []
+
+        for pt in key_points:
+            try:
+                r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
+                    'latitude': pt['lat'], 'longitude': pt['lon'],
+                    'hourly': 'wind_speed_10m,precipitation,weather_code',
+                    'timezone': 'auto', 'forecast_days': 1
+                }, verify=False, timeout=8).json()
+                r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+                    'latitude': pt['lat'], 'longitude': pt['lon'],
+                    'hourly': 'wave_height',
+                    'timezone': 'auto', 'forecast_days': 1
+                }, verify=False, timeout=8).json()
+                hours_met = r_met.get('hourly', {})
+                hours_mar = r_mar.get('hourly', {})
+                times = hours_met.get('time', [])
+                from datetime import date
+                today = date.today().isoformat()
+                pt_hours = []
+                for i, t in enumerate(times):
+                    if not t.startswith(today): continue
+                    wind = (hours_met.get('wind_speed_10m') or [0]*24)[i] or 0
+                    wave = (hours_mar.get('wave_height') or [0]*24)[i] or 0
+                    if wave is None: wave = 0
+                    precip = (hours_met.get('precipitation') or [0]*24)[i] or 0
+                    score = 0
+                    if wind < 15: score += 3
+                    elif wind < 25: score += 2
+                    if wave < 0.8: score += 3
+                    elif wave < 1.5: score += 2
+                    if precip < 0.5: score += 2
+                    pt_hours.append({'time': t[11:], 'wind': round(wind,1), 'wave': round(wave,2), 'score': score})
+                route_data.append({'lat': pt['lat'], 'lon': pt['lon'], 'hours': pt_hours})
+            except Exception:
+                route_data.append({'lat': pt['lat'], 'lon': pt['lon'], 'hours': []})
+
+        # Best departure: hour where all 3 points score >= 6
+        best_departure = None
+        if all(rd['hours'] for rd in route_data):
+            for idx in range(min(len(rd['hours']) for rd in route_data)):
+                if all(rd['hours'][idx]['score'] >= 6 for rd in route_data):
+                    best_departure = route_data[0]['hours'][idx]['time']
+                    break
+
+        # Distance estimate (haversine)
+        dist_km = haversine(lat1, lon1, lat2, lon2)
+        return {
+            'from': {'lat': lat1, 'lon': lon1},
+            'to': {'lat': lat2, 'lon': lon2},
+            'distance_km': round(dist_km, 1),
+            'points': route_data,
+            'best_departure': best_departure,
+        }
+    except Exception as e:
+        return {'error': str(e), 'points': []}
+
 def fetch_hoy():
     """Hour-by-hour conditions for today — sailing/fishing window analysis."""
     from datetime import datetime, date
@@ -942,7 +1232,8 @@ _DASH_FETCHERS = {
     'ais': fetch_ais, 'alertas': fetch_alertas,
     'prediccion': fetch_prediccion, 'calidad': fetch_calidad,
     'vigilancia': fetch_vigilancia, 'pesca': fetch_pesca,
-    'hoy': fetch_hoy,
+    'hoy': fetch_hoy, 'manana': fetch_manana,
+    'corrientes': fetch_corrientes,
 }
 
 # --- RUTAS ---
@@ -1002,6 +1293,68 @@ def api_dashboard(tab):
 @app.route('/api/presion_trend')
 def api_presion_trend():
     return jsonify(get_presion_trend())
+
+@app.route('/api/briefing')
+def api_briefing():
+    """Generate a plain-text daily weather briefing for Rota area."""
+    try:
+        datos = get_datos_maritimos()
+        from datetime import datetime
+        now = datetime.now()
+
+        wave_h = datos.get('altura_max', 0)
+        wind_kmh = datos.get('viento_kmh', 0)
+        wind_dir = datos.get('viento_dir', '?')
+        racha = datos.get('racha_kmh', 0)
+        presion = datos.get('presion', 1013)
+        beaufort = datos.get('beaufort', 0)
+        temp = datos.get('temperatura_c', 20)
+        visibilidad = datos.get('visibilidad', 10)
+        temp_agua = datos.get('temp_agua')
+        sunrise = datos.get('sunrise', '?')
+        sunset = datos.get('sunset', '?')
+
+        bf_desc = ['calma','ventolina','brisa muy débil','brisa débil','brisa moderada',
+                   'brisa fresca','brisa fuerte','viento fresco','temporal','temporal fuerte',
+                   'temporal muy fuerte','borrasca','huracán']
+        bf_text = bf_desc[beaufort] if beaufort < len(bf_desc) else 'muy fuerte'
+
+        sea_state = ('mar llana' if wave_h < 0.1 else 'marejadilla' if wave_h < 1.25
+                     else 'marejada' if wave_h < 2.5 else 'mar gruesa' if wave_h < 4 else 'mar muy gruesa')
+
+        pres_trend = get_presion_trend()
+        trend_text = {'subiendo': 'en ascenso', 'bajando': 'en descenso', 'estable': 'estable'}.get(
+            pres_trend.get('trend', 'estable'), 'estable')
+
+        # Go/No-Go
+        go = wave_h <= 2.0 and wind_kmh <= 25 and presion >= 995
+        go_text = 'FAVORABLE para navegación costera' if go else 'DESFAVORABLE — se recomienda no salir'
+
+        lines = [
+            f"PARTE METEOROLÓGICO — Bahía de Cádiz / Rota",
+            f"Fecha: {now.strftime('%A %d de %B de %Y a las %H:%M')} (hora local)",
+            f"",
+            f"SITUACIÓN ACTUAL:",
+            f"  Viento: {wind_dir} a {wind_kmh:.0f} km/h (BF {beaufort} — {bf_text}), rachas de {racha:.0f} km/h",
+            f"  Oleaje: {sea_state}, altura máxima {wave_h:.1f}m",
+            f"  Temperatura: {temp:.1f}°C en el aire",
+        ]
+        if temp_agua:
+            lines.append(f"  Temperatura del agua: {temp_agua:.1f}°C")
+        lines += [
+            f"  Presión: {presion:.0f} hPa ({trend_text})",
+            f"  Visibilidad: {visibilidad:.1f} km",
+            f"",
+            f"SOL: Salida {sunrise} — Puesta {sunset}",
+            f"",
+            f"CONDICIONES PARA LA NAVEGACIÓN: {go_text}",
+        ]
+        if pres_trend.get('alert'):
+            lines.append(f"⚠ ALERTA BAROMÉTRICA: presión crítica o en descenso rápido")
+
+        return jsonify({'briefing': '\n'.join(lines), 'go': go})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/pesca_quick')
 def api_pesca_quick():
@@ -1072,6 +1425,73 @@ def debug():
     return jsonify({
         'mapbox_key': os.environ.get('MAPBOX_KEY', 'NO ENCONTRADA')
     })
+
+# --- VIGILANCIA LOG ---
+@app.route('/api/vigilancia_log')
+def api_vigilancia_log():
+    limit = min(int(request.args.get('limit', 50)), 200)
+    return jsonify({'log': get_vigilancia_log(limit)})
+
+# --- CAPTURAS ---
+@app.route('/api/capturas', methods=['GET'])
+def api_get_capturas():
+    return jsonify({'capturas': get_capturas(), 'stats': get_capturas_stats()})
+
+@app.route('/api/capturas', methods=['POST'])
+def api_add_captura():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    try:
+        # Snapshot current conditions for context
+        try:
+            datos = get_datos_maritimos()
+            cond = {
+                'olas_m': datos.get('altura_max'),
+                'viento_kmh': datos.get('viento_kmh'),
+                'presion_hpa': datos.get('presion'),
+                'temp_agua': datos.get('temp_agua'),
+                'beaufort': datos.get('beaufort'),
+            }
+        except Exception:
+            cond = {}
+        cap_id = add_captura(
+            especie=data.get('especie', 'Desconocida'),
+            peso_kg=data.get('peso_kg'),
+            longitud_cm=data.get('longitud_cm'),
+            lat=data.get('lat'),
+            lon=data.get('lon'),
+            fecha=data.get('fecha'),
+            notas=data.get('notas', ''),
+            condiciones=cond,
+        )
+        return jsonify({'ok': True, 'id': cap_id})
+    except (ValueError, TypeError) as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/capturas/<int:cap_id>', methods=['DELETE'])
+def api_delete_captura(cap_id):
+    delete_captura(cap_id)
+    return jsonify({'ok': True})
+
+# --- ROUTING METEOROLÓGICO ---
+@app.route('/api/routing')
+def api_routing():
+    try:
+        lat1 = float(request.args.get('lat1', 36.62))
+        lon1 = float(request.args.get('lon1', -6.35))
+        lat2 = float(request.args.get('lat2', 36.72))
+        lon2 = float(request.args.get('lon2', -6.20))
+        for v in [lat1, lon1, lat2, lon2]:
+            if not isinstance(v, float):
+                raise ValueError('Invalid coordinate')
+        if not (-90 <= lat1 <= 90 and -90 <= lat2 <= 90):
+            return jsonify({'error': 'Invalid lat'}), 400
+        if not (-180 <= lon1 <= 180 and -180 <= lon2 <= 180):
+            return jsonify({'error': 'Invalid lon'}), 400
+        return jsonify(fetch_routing(lat1, lon1, lat2, lon2))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     init_db()

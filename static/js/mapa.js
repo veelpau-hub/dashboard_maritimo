@@ -338,3 +338,112 @@ function toggleMapStyle() {
         setTimeout(() => { mapLayersReady = true; initMapLayers(); }, 500);
     });
 }
+
+// =================== ROUTING METEOROLÓGICO ===================
+let _routingMode = false;
+let _routingPoints = [];  // [{lat,lon}]
+let _routingMarkers = [];
+
+function toggleRoutingMode() {
+    _routingMode = document.getElementById('toggle-routing')?.checked || false;
+    const panel = document.getElementById('routing-panel');
+    if (panel) panel.style.display = _routingMode ? 'block' : 'none';
+    if (_routingMode) {
+        mapa.getCanvas().style.cursor = 'crosshair';
+        _routingPoints = [];
+        document.getElementById('routing-status').textContent = 'Haz clic para marcar el ORIGEN';
+    } else {
+        mapa.getCanvas().style.cursor = '';
+        limpiarRuta();
+    }
+}
+
+mapa.on('click', e => {
+    if (!_routingMode || _wpAddMode) return;
+    if (_routingPoints.length >= 2) return;  // already have 2 points
+    _routingPoints.push({lat: e.lngLat.lat, lon: e.lngLat.lng});
+
+    const color = _routingPoints.length === 1 ? '#22c55e' : '#ef4444';
+    const label = _routingPoints.length === 1 ? 'A' : 'B';
+    const el = document.createElement('div');
+    el.style.cssText = `width:22px;height:22px;background:${color};border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;border:2px solid white;cursor:pointer`;
+    el.textContent = label;
+    const m = new mapboxgl.Marker(el).setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(mapa);
+    _routingMarkers.push(m);
+
+    const statusEl = document.getElementById('routing-status');
+    if (_routingPoints.length === 1) {
+        statusEl.textContent = `A: ${e.lngLat.lat.toFixed(3)}°N ${Math.abs(e.lngLat.lng).toFixed(3)}°W — Haz clic para el DESTINO`;
+    } else {
+        statusEl.textContent = `Ruta A→B lista. Pulsa "Calcular ruta"`;
+    }
+});
+
+function calcularRuta() {
+    if (_routingPoints.length < 2) {
+        alert('Selecciona 2 puntos en el mapa primero.');
+        return;
+    }
+    const [p1, p2] = _routingPoints;
+    const statusEl = document.getElementById('routing-status');
+    statusEl.textContent = 'Calculando...';
+
+    // Draw route line on map
+    if (mapLayersReady) {
+        if (mapa.getSource('routing-line-src')) {
+            mapa.getSource('routing-line-src').setData({type:'Feature',
+                geometry:{type:'LineString', coordinates:[[p1.lon,p1.lat],[p2.lon,p2.lat]]}});
+        } else {
+            mapa.addSource('routing-line-src', {type:'geojson', data:{type:'Feature',
+                geometry:{type:'LineString', coordinates:[[p1.lon,p1.lat],[p2.lon,p2.lat]]}}});
+            mapa.addLayer({id:'routing-line', type:'line', source:'routing-line-src',
+                paint:{'line-color':'#4AC8E8','line-width':2,'line-opacity':0.7,'line-dasharray':[6,3]}});
+        }
+    }
+
+    fetch(`/api/routing?lat1=${p1.lat}&lon1=${p1.lon}&lat2=${p2.lat}&lon2=${p2.lon}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { statusEl.textContent = 'Error: ' + data.error; return; }
+            const dist = data.distance_km || 0;
+            const best = data.best_departure || 'Sin ventana';
+            statusEl.innerHTML = `${dist.toFixed(1)} km · Mejor salida: <strong style="color:#22c55e">${best}</strong>`;
+            // Show routing popup
+            showRoutingResult(data, p1, p2);
+        })
+        .catch(err => { statusEl.textContent = 'Error de conexión'; });
+}
+
+function showRoutingResult(data, p1, p2) {
+    const mid_lat = (p1.lat + p2.lat) / 2;
+    const mid_lon = (p1.lon + p2.lon) / 2;
+    const pts = data.points || [];
+    let timeline = '';
+    if (pts[0] && pts[0].hours) {
+        const hours = pts[0].hours.slice(0, 12);
+        timeline = hours.map(h => {
+            const c = h.score >= 6 ? '#22c55e' : h.score >= 4 ? '#f59e0b' : '#ef4444';
+            return `<div style="display:inline-block;width:16px;height:28px;background:${c};opacity:0.75;margin:1px;border-radius:2px;vertical-align:top" title="${h.time} Viento:${h.wind}km Olas:${h.wave}m"></div>`;
+        }).join('');
+    }
+    new mapboxgl.Popup({maxWidth:'280px'}).setLngLat([mid_lon, mid_lat])
+        .setHTML(`<div style="font-family:monospace;font-size:0.75rem">
+            <strong style="color:#4AC8E8">ROUTING METEOROLÓGICO</strong><br>
+            Distancia: ${(data.distance_km||0).toFixed(1)} km<br>
+            Mejor salida: <strong style="color:#22c55e">${data.best_departure || 'Sin ventana'}</strong><br>
+            <div style="margin-top:4px;font-size:0.65rem;color:#999">Timeline horas (verde=bueno):</div>
+            <div style="margin-top:2px">${timeline}</div>
+            </div>`)
+        .addTo(mapa);
+}
+
+function limpiarRuta() {
+    _routingPoints = [];
+    _routingMarkers.forEach(m => m.remove());
+    _routingMarkers = [];
+    if (mapLayersReady && mapa.getSource('routing-line-src')) {
+        mapa.getSource('routing-line-src').setData({type:'Feature',geometry:{type:'LineString',coordinates:[]}});
+    }
+    const statusEl = document.getElementById('routing-status');
+    if (statusEl) statusEl.textContent = 'Sin ruta seleccionada';
+}
