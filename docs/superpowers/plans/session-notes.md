@@ -254,6 +254,33 @@ Gaps nuevos identificados:
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
+---
+
+## Iteración 16 (2026-05-01, ~07:36 UTC)
+
+### Fase 2A — Crítica iter 16
+- Modal briefing: el `display:none` en el style attr hace que `style.display='flex'` no funcione bien al reabrirlo — arreglar
+- Predicción 7 días: los iconos son emoji, pero falta Beaufort por día (escala de viento relativa)
+- El tab AIS dice "Sin buques detectados" pero no hay indicación de si el servicio AIS está conectado o simplemente hay pocas embarcaciones en el área
+- El tab corrientes: el error "ocean_current_velocity not available" de Open-Meteo no se comunica bien al usuario
+- Widget mareas en overview: actualmente el widget de mareas no existe — se muestra en Dashboard/Mareas pero el overview solo tiene la previsión de olas
+
+### Fase 2B — Vigilancia: detalle de buque + ordenamiento
+- Click en fila de la tabla → panel de detalles con todos los campos del buque + historial de posiciones formateado
+- Ordenamiento de tabla por columna (nombre, amenaza, velocidad)
+
+### Fase 2C — Pesca: export CSV capturas
+- Botón "Exportar CSV" en el panel de capturas (similar al log de vigilancia)
+- Mini-gráfico scatter: capturas propias vs ola (si hay >= 3 capturas con peso)
+
+### Fase 3 — Mareas en Overview + AIS status indicator
+1. **Widget mareas en Overview**: nueva tarjeta `widget data-widget="mareas"` que muestra:
+   - Estado actual: ENTRANTE / SALIENTE / PARADA
+   - Próxima pleamar/bajamar con countdown HH:MM
+   - Badge verde/rojo según si es buena hora para pesca
+2. **AIS status indicator**: icono pulsante cuando el stream AIS está conectado vs desconectado
+3. **Ordenamiento tabla AIS/Vigilancia** por clic en cabeceras
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

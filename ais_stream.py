@@ -13,6 +13,8 @@ import websocket
 _vessels: dict = {}
 _lock = threading.Lock()
 _VESSEL_TTL = 600  # segundos sin actualización → se descarta
+_last_message_ts: float = 0.0
+_connected: bool = False
 
 BOUNDING_BOX = [[[36.3, -7.0], [37.0, -5.8]]]
 WS_URL = "wss://stream.aisstream.io/v0/stream"
@@ -24,7 +26,19 @@ def get_vessels() -> list[dict]:
         return [v for v in _vessels.values() if now - v["_ts"] < _VESSEL_TTL]
 
 
+def get_status() -> dict:
+    """Returns AIS stream connection status."""
+    global _last_message_ts, _connected
+    age = time.time() - _last_message_ts if _last_message_ts else None
+    return {
+        'connected': _connected,
+        'last_message_age_s': round(age, 0) if age is not None else None,
+        'vessel_count': len(get_vessels()),
+    }
+
 def _on_open(ws):
+    global _connected
+    _connected = True
     api_key = os.getenv("AISSTREAM_API_KEY", "")
     ws.send(json.dumps({
         "APIKey": api_key,
@@ -35,6 +49,8 @@ def _on_open(ws):
 
 
 def _on_message(ws, raw):
+    global _last_message_ts
+    _last_message_ts = time.time()
     try:
         data = json.loads(raw)
         msg_type = data.get("MessageType")
@@ -80,6 +96,8 @@ def _on_error(ws, error):
 
 
 def _on_close(ws, code, msg):
+    global _connected
+    _connected = False
     logging.info(f"AISstream cerrado ({code})")
 
 

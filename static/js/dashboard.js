@@ -337,6 +337,7 @@ function renderAIS(data, el) {
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>MMSI</th></tr></thead>
             <tbody id="ais-tbody"></tbody></table></div>`;
     renderAISRows(vessels);
+    requestAnimationFrame(() => makeSortable('ais-main-table'));
 }
 
 function filterAISTable() {
@@ -586,6 +587,7 @@ function renderVigilancia(data, el) {
         vesselRows = `${filterControls}<div style="overflow-x:auto"><table class="ais-table" id="vig-table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Amenaza</th><th>Estado</th><th>SOG</th><th>MMSI</th></tr></thead>
             <tbody id="vig-tbody">${rowsHtml}</tbody></table></div>`;
+        requestAnimationFrame(() => makeSortable('vig-table'));
     }
 
     let oorSection = '';
@@ -632,8 +634,8 @@ function renderVigilanciaLog(el_id) {
                     <span style="color:rgba(255,255,255,0.3);font-size:0.65rem">${esc(e.evento||'')} ${e.velocidad ? '· ' + parseFloat(e.velocidad).toFixed(1) + ' kt' : ''}</span>
                 </div>`;
             }).join('');
-            const csvBtn = `<button onclick="exportVigilanciaCSV()" style="margin-top:0.5rem;background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.68rem;padding:3px 10px;cursor:pointer">⬇ Exportar CSV</button>`;
-            container.innerHTML = `<div>${rows}</div>${csvBtn}`;
+            const csvBtnVigilancia = `<button onclick="exportVigilanciaCSV()" style="margin-top:0.5rem;background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.68rem;padding:3px 10px;cursor:pointer">Exportar CSV</button>`;
+            container.innerHTML = `<div>${rows}</div>${csvBtnVigilancia}`;
             container._logData = log;
         })
         .catch(() => {
@@ -788,6 +790,38 @@ function renderPesca(data, el) {
     }
     // Load captures panel
     requestAnimationFrame(() => renderCapturasPanel('capturas-panel'));
+}
+
+// =================== SORTABLE TABLE HELPER ===================
+function makeSortable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach((th, colIndex) => {
+        th.style.cursor = 'pointer';
+        th.style.userSelect = 'none';
+        let sortAsc = true;
+        th.addEventListener('click', () => {
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const aText = (a.cells[colIndex]?.textContent || '').trim();
+                const bText = (b.cells[colIndex]?.textContent || '').trim();
+                const aNum = parseFloat(aText);
+                const bNum = parseFloat(bText);
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return sortAsc ? aNum - bNum : bNum - aNum;
+                }
+                return sortAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+            });
+            sortAsc = !sortAsc;
+            rows.forEach(r => tbody.appendChild(r));
+            // Update sort indicator
+            headers.forEach(h => h.textContent = h.textContent.replace(' ↑',' ').replace(' ↓',' '));
+            th.textContent += sortAsc ? ' ↓' : ' ↑';
+        });
+    });
 }
 
 function drawLineChart(selector, labels, values, unit, color) {
@@ -1019,7 +1053,10 @@ function renderCapturasPanel(el_id) {
                     ${statsHtml}
                 </div>` : ''}
                 ${capturas.length ? `<div class="dash-card">
-                    <div class="dash-card-label" style="margin-bottom:0.4rem">Últimas capturas</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+                        <div class="dash-card-label">Últimas capturas</div>
+                        <button onclick="exportCapturasCSV()" style="background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.65rem;padding:2px 8px;cursor:pointer">Exportar CSV</button>
+                    </div>
                     ${recentHtml}
                     ${capturas.length > 5 ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:4px">Mostrando 5 de ${capturas.length} capturas</div>` : ''}
                 </div>` : `<div class="dash-card"><div class="dash-card-label">Sin capturas registradas</div><div style="font-size:0.78rem;color:rgba(255,255,255,0.3);margin-top:0.4rem">Usa el formulario de arriba para registrar tu primera captura. Las condiciones meteorológicas del momento se guardarán automáticamente.</div></div>`}`;
@@ -1027,6 +1064,31 @@ function renderCapturasPanel(el_id) {
         .catch(() => {
             container.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:0.8rem">Error cargando capturas.</p>';
         });
+}
+
+function exportCapturasCSV() {
+    fetch('/api/capturas')
+        .then(r => r.json())
+        .then(data => {
+            const capturas = data.capturas || [];
+            if (!capturas.length) { alert('Sin capturas para exportar'); return; }
+            const header = 'ID,Especie,Peso_kg,Longitud_cm,Fecha,Notas,Olas_m,Viento_kmh,Presion_hPa,Temp_agua,Creado\n';
+            const rows = capturas.map(c => {
+                const cond = c.condiciones || {};
+                return [c.id, c.especie, c.peso_kg||'', c.longitud_cm||'',
+                        c.fecha||'', (c.notas||'').replace(/,/g,';'),
+                        cond.olas_m||'', cond.viento_kmh||'', cond.presion_hpa||'',
+                        cond.temp_agua||'', c.creado||''].join(',');
+            }).join('\n');
+            const blob = new Blob([header + rows], {type: 'text/csv'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `capturas_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        })
+        .catch(() => alert('Error al exportar capturas'));
 }
 
 function guardarCaptura() {

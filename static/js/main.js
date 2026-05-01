@@ -297,6 +297,56 @@ document.addEventListener('click', e => {
     if (modal && e.target === modal) modal.style.display = 'none';
 });
 
+// --- MAREAS ESTADO WIDGET (overview) ---
+function loadMareasEstado() {
+    fetch('/api/mareas_estado')
+        .then(r => r.json())
+        .then(d => {
+            const container = document.getElementById('mareas-state-container');
+            const nextText = document.getElementById('mareas-next-text');
+            if (!container) return;
+
+            const estadoColors = {entrante:'#22c55e', saliente:'#f59e0b', parada:'#4AC8E8', desconocido:'rgba(255,255,255,0.3)'};
+            const estadoLabel = {entrante:'ENTRANTE', saliente:'SALIENTE', parada:'PARADA', desconocido:'?', error:'ERROR'};
+            const color = estadoColors[d.estado] || '#888';
+            const label = estadoLabel[d.estado] || d.estado;
+
+            container.innerHTML = `<div style="font-size:1.1rem;font-weight:700;color:${color}">${label}</div>`;
+
+            if (nextText) {
+                const tipo = d.proximo_tipo === 'pleamar' ? 'Pleamar' : d.proximo_tipo === 'bajamar' ? 'Bajamar' : 'Próxima';
+                const h = d.proximo_height != null ? ` · ${parseFloat(d.proximo_height).toFixed(1)}m` : '';
+                const countdown = d.countdown ? ` en ${d.countdown}` : '';
+                nextText.textContent = d.proximo_time ? `${tipo} ${d.proximo_time}${h}${countdown}` : 'Sin datos';
+            }
+        })
+        .catch(() => {});
+}
+loadMareasEstado();
+setInterval(loadMareasEstado, 300000);
+
+// --- AIS STATUS INDICATOR ---
+function loadAISStatus() {
+    if (!document.getElementById('ais-status-indicator')) return;
+    fetch('/api/ais_status')
+        .then(r => r.json())
+        .then(d => {
+            const el = document.getElementById('ais-status-indicator');
+            if (!el) return;
+            if (d.connected && d.last_message_age_s != null && d.last_message_age_s < 120) {
+                el.style.background = '#22c55e';
+                el.title = `AIS conectado · ${d.vessel_count} buques · último mensaje hace ${d.last_message_age_s}s`;
+            } else {
+                el.style.background = d.connected ? '#f59e0b' : '#ef4444';
+                el.title = d.connected ? 'AIS conectado (sin datos recientes)' : 'AIS desconectado';
+            }
+        })
+        .catch(() => {});
+}
+
+loadAISStatus();
+setInterval(loadAISStatus, 60000);
+
 // --- VIGILANCIA ALERT BADGE in submenu tab ---
 function loadVigilanciaAlerts() {
     fetch('/api/vigilancia_log?limit=10')

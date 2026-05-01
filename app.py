@@ -1492,6 +1492,71 @@ def service_worker():
     response.headers['Cache-Control'] = 'no-cache'
     return response
 
+@app.route('/api/ais_status')
+def api_ais_status():
+    return jsonify(ais_stream.get_status())
+
+@app.route('/api/mareas_estado')
+def api_mareas_estado():
+    """Quick tide state for overview widget — current direction and next extreme with countdown."""
+    from datetime import datetime
+    try:
+        mareas = get_dash_cached('mareas', fetch_mareas)
+        extremes = mareas.get('extremes', [])
+        now = datetime.now()
+        now_min = now.hour * 60 + now.minute
+
+        if not extremes:
+            return jsonify({'estado': 'desconocido', 'proximo': None, 'countdown': None, 'coeficiente': None})
+
+        coef = mareas.get('coeficiente')
+        estado = 'desconocido'
+        proximo_tipo = None
+        proximo_time = None
+        proximo_height = None
+        min_diff = 9999
+
+        for i in range(len(extremes)):
+            try:
+                hh, mm = map(int, extremes[i]['time'].split(':'))
+                ext_min = hh * 60 + mm
+                diff = ext_min - now_min
+                if diff > 0 and diff < min_diff:
+                    min_diff = diff
+                    proximo_tipo = extremes[i]['type']
+                    proximo_time = extremes[i]['time']
+                    proximo_height = extremes[i].get('height')
+                    # Current tide state: moving toward this extreme
+                    if proximo_tipo == 'pleamar':
+                        estado = 'entrante'
+                    else:
+                        estado = 'saliente'
+            except Exception:
+                pass
+
+        # Fallback: if all extremes are in the past
+        if proximo_tipo is None and extremes:
+            proximo_tipo = extremes[0]['type']
+            proximo_time = extremes[0]['time']
+            proximo_height = extremes[0].get('height')
+            estado = 'parada'
+
+        # Countdown
+        countdown = None
+        if min_diff < 9999 and min_diff > 0:
+            countdown = f"{min_diff // 60:02d}h {min_diff % 60:02d}m"
+
+        return jsonify({
+            'estado': estado,
+            'proximo_tipo': proximo_tipo,
+            'proximo_time': proximo_time,
+            'proximo_height': proximo_height,
+            'countdown': countdown,
+            'coeficiente': coef,
+        })
+    except Exception as e:
+        return jsonify({'estado': 'error', 'error': str(e)})
+
 @app.route('/debug')
 def debug():
     return jsonify({

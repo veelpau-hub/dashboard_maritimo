@@ -158,6 +158,35 @@ def test_dashboard_manana(client, monkeypatch):
     assert 'hours' in d
     assert len(d['hours']) == 1
 
+def test_ais_status(client):
+    r = client.get('/api/ais_status')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'connected' in d and 'vessel_count' in d
+
+def test_mareas_estado(client, monkeypatch):
+    import app as flask_app
+    monkeypatch.setattr(flask_app, 'fetch_mareas', lambda: {
+        'extremes': [
+            {'type': 'bajamar', 'time': '06:30', 'height': 0.4},
+            {'type': 'pleamar', 'time': '12:45', 'height': 2.8},
+            {'type': 'bajamar', 'time': '19:10', 'height': 0.5},
+        ],
+        'coeficiente': 85,
+    })
+    flask_app._dash_cache.clear()
+    r = client.get('/api/mareas_estado')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'estado' in d
+    assert d['estado'] in ('entrante', 'saliente', 'parada', 'desconocido')
+
+def test_briefing_endpoint(client):
+    r = client.get('/api/briefing')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'briefing' in d or 'error' in d
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {
