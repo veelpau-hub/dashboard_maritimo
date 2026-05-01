@@ -566,7 +566,15 @@ function renderVigilancia(data, el) {
             <div class="dash-card"><div class="dash-card-label" style="color:#f59e0b">AMARILLO</div><div class="dash-card-value" style="color:#f59e0b">${data.amarillo||0}</div></div>
             <div class="dash-card"><div class="dash-card-label" style="color:#22c55e">VERDE</div><div class="dash-card-value" style="color:#22c55e">${data.verde||0}</div></div>
             ${(data.en_roz||0) > 0 ? `<div class="dash-card" style="border-color:#ef4444;background:rgba(239,68,68,0.06)"><div class="dash-card-label" style="color:#ef4444">EN ZONA ROZ</div><div class="dash-card-value" style="color:#ef4444">${data.en_roz}</div></div>` : ''}
+            ${(data.interceptacion||0) > 0 ? `<div class="dash-card" style="border-color:#ef4444;background:rgba(239,68,68,0.12);animation:pulse 1s infinite"><div class="dash-card-label" style="color:#ef4444">INTERCEPTACIÓN</div><div class="dash-card-value" style="color:#ef4444">${data.interceptacion}</div><div class="dash-card-sub" style="color:#ef4444;font-size:0.6rem">ROJO RUMBO ROZ</div></div>` : ''}
         </div>`;
+
+    // Interception warning banner
+    const interceptBanner = (data.interceptacion||0) > 0
+        ? `<div style="background:rgba(239,68,68,0.15);border:1px solid #ef4444;border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.75rem;color:#ef4444;font-size:0.78rem;font-weight:600">
+            ALERTA: ${data.interceptacion} buque(s) ROJO con rumbo hacia la Base Naval de Rota (ETA &lt; 2h)
+           </div>`
+        : '';
 
     const rozInfo = data.roz ? `<div class="alert-card" style="border-color:#ef4444;background:rgba(239,68,68,0.05);margin-bottom:0.75rem">
         <div class="alert-title">🚫 Zona ROZ — Base Naval Rota</div>
@@ -621,7 +629,7 @@ function renderVigilancia(data, el) {
 
     el.innerHTML = `
         <p class="dash-section-title">Estado — Bahía de Cádiz / ROZ Rota</p>
-        ${rozInfo}${summary}
+        ${interceptBanner}${rozInfo}${summary}
         <p class="dash-section-title">Seguimiento multi-buque</p>
         ${vesselRows}${oorSection}
 
@@ -805,7 +813,10 @@ function renderPesca(data, el) {
         ${sparkData.length ? `<p class="dash-section-title">Temperatura del agua (últimas lecturas)</p>${sparkEl}` : ''}
 
         <p class="dash-section-title">Especies en temporada — Bahía de Cádiz</p>
-        <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${speciesCards}</div>
+        <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${speciesCards}</div>
+
+        <p class="dash-section-title" style="margin-top:1rem">Calendario de temporadas</p>
+        <div id="calendario-pesca" style="overflow-x:auto">${buildCalendarioPesca(species, data.species_off_season||[])}</div>
 
         <p class="dash-section-title" style="margin-top:1rem">Diario de capturas</p>
         <div id="capturas-panel"></div>`;
@@ -818,6 +829,69 @@ function renderPesca(data, el) {
     }
     // Load captures panel
     requestAnimationFrame(() => renderCapturasPanel('capturas-panel'));
+}
+
+// =================== PESCA CALENDARIO DE TEMPORADAS ===================
+const SPECIES_CALENDAR_JS = {
+    'Dorada':      [1,2,3,10,11,12],
+    'Lubina':      [1,2,3,4,9,10,11,12],
+    'Atún':        [5,6,7,8,9],
+    'Pargo':       [4,5,6,7,8,9,10],
+    'Boquerón':    [3,4,5,6,7,8],
+    'Caballa':     [3,4,5,6,7,8,9],
+    'Lenguado':    [2,3,4,5,10,11],
+    'Choco':       [1,2,3,10,11,12],
+    'Gamba':       [1,2,3,4,10,11,12],
+    'Langostino':  [4,5,6,7,8,9],
+    'Pez espada':  [6,7,8,9],
+    'Dentón':      [4,5,6,7,8,9,10],
+};
+const MONTH_LABELS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function buildCalendarioPesca(inSeason, offSeason) {
+    const allSpecies = [...inSeason, ...offSeason];
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+
+    const headerCells = MONTH_LABELS.map((m, i) => {
+        const isCurrentMonth = (i + 1) === currentMonth;
+        const style = isCurrentMonth
+            ? 'background:rgba(74,200,232,0.15);color:#4AC8E8;font-weight:700;'
+            : 'color:rgba(255,255,255,0.4);';
+        return `<th style="font-size:0.62rem;padding:3px 5px;text-align:center;${style}">${esc(m)}</th>`;
+    }).join('');
+
+    const rows = allSpecies.map(sp => {
+        const months = SPECIES_CALENDAR_JS[sp] || [];
+        const isInSeason = inSeason.includes(sp);
+        const cells = MONTH_LABELS.map((m, i) => {
+            const mon = i + 1;
+            const active = months.includes(mon);
+            const isCurrentMonth = mon === currentMonth;
+            let bg = 'rgba(255,255,255,0.04)';
+            let color = 'transparent';
+            if (active) {
+                bg = isCurrentMonth ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.18)';
+                color = isCurrentMonth ? '#22c55e' : 'rgba(34,197,94,0.6)';
+            }
+            return `<td style="background:${bg};border-radius:3px;padding:3px 2px;text-align:center">
+                ${active ? `<span style="color:${color};font-size:0.65rem">●</span>` : '<span style="color:transparent;font-size:0.65rem">·</span>'}
+            </td>`;
+        }).join('');
+        const spColor = isInSeason ? '#22c55e' : 'rgba(255,255,255,0.35)';
+        return `<tr>
+            <td style="font-size:0.7rem;color:${spColor};padding:3px 8px;white-space:nowrap;min-width:90px">${esc(sp)}</td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    return `<table style="border-collapse:separate;border-spacing:2px;width:100%;font-size:0.65rem">
+        <thead><tr>
+            <th style="font-size:0.62rem;padding:3px 8px;text-align:left;color:rgba(255,255,255,0.3)">Especie</th>
+            ${headerCells}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:0.6rem;color:rgba(255,255,255,0.2);margin-top:4px">Verde = en temporada · Mes actual resaltado en azul</div>`;
 }
 
 // =================== SORTABLE TABLE HELPER ===================

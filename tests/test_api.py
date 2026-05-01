@@ -200,6 +200,25 @@ def test_puertos_cercanos_missing_params(client):
     r = client.get('/api/puertos_cercanos')
     assert r.status_code == 400
 
+def test_score_dia(client):
+    r = client.get('/api/score_dia')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'score' in d
+    assert 0 <= d['score'] <= 100
+    assert 'label' in d and 'color' in d
+
+def test_vigilancia_interceptacion_field(client, monkeypatch):
+    import ais_stream
+    monkeypatch.setattr(ais_stream, 'get_vessels', lambda: [])
+    import app as flask_app
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/vigilancia')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'interceptacion' in d
+    assert d['interceptacion'] == 0
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {

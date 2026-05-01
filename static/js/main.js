@@ -272,6 +272,23 @@ setTempUnit(tempUnit);
 setWindUnit(windUnit);
 setLang(lang);
 
+// --- SCORE DÍA BADGE ---
+function loadScoreDia() {
+    fetch('/api/score_dia')
+        .then(r => r.json())
+        .then(d => {
+            const badge = document.getElementById('score-dia-badge');
+            if (!badge) return;
+            badge.style.color = d.color || '#888';
+            badge.style.borderColor = (d.color || '#888').replace(')', ',0.3)').replace('rgb','rgba');
+            badge.textContent = `${d.score}/100 · ${d.label || ''}`;
+            badge.title = `Score día: ${d.score}/100 — ${d.label}. Olas: ${d.details?.wave_h}m · Viento: ${d.details?.wind_kmh}km/h · Presión: ${d.details?.presion}hPa`;
+        })
+        .catch(() => {});
+}
+loadScoreDia();
+setInterval(loadScoreDia, 300000);
+
 // --- PARTE METEOROLÓGICO BRIEFING ---
 function mostrarBriefing() {
     const modal = document.getElementById('briefing-modal');

@@ -701,6 +701,29 @@ def _vessel_status(vessel):
         return 'EN MOVIMIENTO'
     return 'FONDEADO'
 
+def _interception_risk(vessel):
+    """Returns True if a ROJO vessel is heading toward Base Naval Rota at speed > 5kt.
+    'Heading toward' means bearing from vessel to ROZ center is within ±30° of course."""
+    try:
+        sog = vessel.get('speed') or 0
+        course = vessel.get('course')
+        lat = vessel.get('lat')
+        lon = vessel.get('lon')
+        if sog < 5 or course is None or lat is None or lon is None:
+            return False
+        # Bearing from vessel to ROZ center
+        import math
+        dlat = ROZ_CENTER_LAT - lat
+        dlon = ROZ_CENTER_LON - lon
+        bearing_to_roz = (math.degrees(math.atan2(dlon, dlat)) + 360) % 360
+        diff = abs(((course - bearing_to_roz) + 180) % 360 - 180)
+        # ETA in hours
+        dist_km = haversine(lat, lon, ROZ_CENTER_LAT, ROZ_CENTER_LON)
+        eta_h = dist_km / (sog * 1.852) if sog > 0 else 999
+        return diff <= 30 and eta_h <= 2.0
+    except Exception:
+        return False
+
 def fetch_vigilancia():
     import time as _time
     vessels_raw = ais_stream.get_vessels()
@@ -764,7 +787,26 @@ def fetch_vigilancia():
             except Exception:
                 pass
 
-        _vigilancia_seen[mmsi] = {'threat': threat, 'in_roz': in_roz}
+        # Interception risk (ROJO vessels heading toward Base Naval at speed)
+        intercept = False
+        if threat == 'ROJO':
+            intercept = _interception_risk(v)
+            prev_intercept = _vigilancia_seen.get(mmsi, {}).get('intercept', False)
+            if intercept and not prev_intercept:
+                try:
+                    log_vigilancia_event(
+                        mmsi=mmsi,
+                        nombre=v.get('name', 'Desconocido'),
+                        amenaza=threat,
+                        evento='RUMBO_ROZ',
+                        velocidad=v.get('speed'),
+                        lat=v.get('lat'),
+                        lon=v.get('lon'),
+                    )
+                except Exception:
+                    pass
+
+        _vigilancia_seen[mmsi] = {'threat': threat, 'in_roz': in_roz, 'intercept': intercept}
 
         vessels_enriched.append({
             **v,
@@ -772,6 +814,7 @@ def fetch_vigilancia():
             'amenaza': threat,
             'estado': status,
             'in_roz': in_roz,
+            'interceptacion': intercept,
             'history': _ais_history.get(mmsi, []),
         })
 
@@ -805,6 +848,7 @@ def fetch_vigilancia():
         'amarillo': sum(1 for v in vessels_enriched if v['amenaza'] == 'AMARILLO'),
         'verde': sum(1 for v in vessels_enriched if v['amenaza'] == 'VERDE'),
         'en_roz': sum(1 for v in vessels_enriched if v.get('in_roz')),
+        'interceptacion': sum(1 for v in vessels_enriched if v.get('interceptacion')),
     }
 
 # --- PESCA ---
@@ -1509,6 +1553,66 @@ def service_worker():
     response.headers['Service-Worker-Allowed'] = '/'
     response.headers['Cache-Control'] = 'no-cache'
     return response
+
+@app.route('/api/score_dia')
+def api_score_dia():
+    """Global daily sailing/fishing score 0-100 for overview."""
+    try:
+        datos = get_datos_maritimos()
+        wave_h = datos.get('altura_max', 0) or 0
+        wind_kmh = datos.get('viento_kmh', 0) or 0
+        presion = datos.get('presion', 1013) or 1013
+        visibilidad = datos.get('visibilidad', 10) or 10
+        bf = datos.get('beaufort', 0) or 0
+        presion_trend = get_presion_trend()
+
+        score = 100
+
+        # Penalize by wave height (max -40)
+        if wave_h > 3.0: score -= 40
+        elif wave_h > 2.0: score -= 25
+        elif wave_h > 1.5: score -= 15
+        elif wave_h > 1.0: score -= 8
+        elif wave_h > 0.5: score -= 3
+
+        # Penalize by wind (max -30)
+        if wind_kmh > 50: score -= 30
+        elif wind_kmh > 35: score -= 20
+        elif wind_kmh > 25: score -= 12
+        elif wind_kmh > 15: score -= 5
+
+        # Penalize by pressure (max -15)
+        if presion < 990: score -= 15
+        elif presion < 1000: score -= 10
+        elif presion < 1005: score -= 5
+
+        # Penalize by pressure falling fast
+        delta = presion_trend.get('delta_h', 0) or 0
+        if delta < -3: score -= 15
+        elif delta < -1.5: score -= 8
+        elif delta < -0.5: score -= 3
+
+        # Bonus for good visibility
+        if visibilidad >= 10: pass
+        elif visibilidad >= 5: score -= 5
+        else: score -= 15
+
+        score = max(0, min(100, score))
+        label = 'Excelente' if score >= 80 else 'Bueno' if score >= 60 else 'Regular' if score >= 40 else 'Malo' if score >= 20 else 'Peligroso'
+        color = '#22c55e' if score >= 80 else '#84cc16' if score >= 60 else '#f59e0b' if score >= 40 else '#f97316' if score >= 20 else '#ef4444'
+
+        return jsonify({
+            'score': score,
+            'label': label,
+            'color': color,
+            'details': {
+                'wave_h': wave_h, 'wind_kmh': wind_kmh,
+                'presion': presion, 'bf': bf,
+                'presion_trend': presion_trend.get('trend', 'estable'),
+            }
+        })
+    except Exception as e:
+        return jsonify({'score': 50, 'label': 'Sin datos', 'color': '#888', 'error': str(e)})
 
 @app.route('/api/sst_grid')
 def api_sst_grid():

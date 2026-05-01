@@ -307,6 +307,34 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
    - Lista de puertos/marinas del COASTAL_POINTS con distancia desde posición usuario
    - Mostrado en overview cuando hay geolocalización activa
 
+---
+
+## Iteración 18 (2026-05-01, ~07:42 UTC)
+
+### Fase 2A — Crítica iter 18
+- Overview: no hay "score del día" como número visible — un navegante quiere saber de un vistazo si es buen día para salir
+- El beaufort gauge en el overview solo muestra el número BF sin contexto visual
+- El tab corrientes muestra error sin decir al usuario que ese punto puede no tener datos marinos
+- El AIS type_name aparece en vigilancia como tipo numérico en algunos buques
+
+### Fase 2B — Vigilancia: análisis de interceptación
+- Para buques ROJO: calcular si el heading del buque apunta hacia la Base Naval (36.6367, -6.3493) dentro de las próximas 2h a su SOG actual
+- Esto añade un campo `interceptacion_riesgo: true/false` y texto de alerta
+- Añadir esto al log como evento 'RUMBO_ROZ'
+
+### Fase 2C — Pesca: calendario visual de temporadas
+- Tabla HTML 12 meses × N especies con color verde (en temporada) / gris (fuera de temporada)
+- Se añade al tab pesca como nueva sección desplegable
+- El mes actual se resalta
+
+### Fase 3 — Score meteorológico + wind rose
+1. **Score meteorológico diario** en overview:
+   - Nuevo endpoint /api/score_dia: combina viento, olas, presión, visibilidad → score 0-100
+   - Widget overview con número grande y color (verde/amarillo/rojo)
+2. **Rosa de vientos polar** (mejora del widget de viento):
+   - En lugar de solo la brújula, añadir mini polar chart de dirección + velocidad (D3)
+   - Widget de viento ampliado en overview
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)
