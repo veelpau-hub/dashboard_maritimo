@@ -862,6 +862,8 @@ function renderPesca(data, el) {
         <p class="dash-section-title" style="margin-top:1rem">Calendario de temporadas</p>
         <div id="calendario-pesca" style="overflow-x:auto">${buildCalendarioPesca(species, data.species_off_season||[])}</div>
 
+        ${buildZonasPescaHtml(data.zonas_pesca||[])}
+
         <p class="dash-section-title" style="margin-top:1rem">Diario de capturas</p>
         <div id="capturas-panel"></div>`;
 
@@ -873,6 +875,23 @@ function renderPesca(data, el) {
     }
     // Load captures panel
     requestAnimationFrame(() => renderCapturasPanel('capturas-panel'));
+}
+
+// =================== ZONAS DE PESCA ===================
+function buildZonasPescaHtml(zonas) {
+    if (!zonas.length) return '';
+    const cards = zonas.map(z => `
+        <div class="dash-card" style="padding:0.7rem">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.3rem">
+                <div style="font-size:0.78rem;color:rgba(255,255,255,0.9);font-weight:600">${esc(z.nombre)}</div>
+                <span style="font-size:0.65rem;color:#4AC8E8;background:rgba(74,200,232,0.1);border-radius:6px;padding:1px 7px">${z.profundidad_m}m</span>
+            </div>
+            <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-bottom:0.3rem">${esc(z.fondo||'')} · ${z.lat?.toFixed(3)}°N ${Math.abs(z.lon||0).toFixed(3)}°W</div>
+            <div style="font-size:0.65rem;color:rgba(255,255,255,0.5)">🎣 ${(z.tecnicas||[]).map(t=>esc(t)).join(' · ')}</div>
+            <div style="font-size:0.65rem;color:#22c55e;margin-top:0.2rem">${(z.especies||[]).map(s=>esc(s)).join(' · ')}</div>
+        </div>`).join('');
+    return `<p class="dash-section-title" style="margin-top:1rem">Zonas de pesca — Bahía de Cádiz</p>
+            <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${cards}</div>`;
 }
 
 // =================== HISTORIAL DE CONDICIONES ===================

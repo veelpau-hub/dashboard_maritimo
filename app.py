@@ -1073,6 +1073,49 @@ CEBO_RECOMENDADO = {
     'Dentón':      {'cebo': 'Calamar, sardina, pez', 'tecnica': 'Fondo en arrecife', 'profundidad': 'fondo'},
 }
 
+ZONAS_PESCA_ROTA = [
+    {
+        'nombre': 'Bajíos de Rota',
+        'lat': 36.65, 'lon': -6.42,
+        'profundidad_m': 8,
+        'fondo': 'Arena/posidonia',
+        'tecnicas': ['Fondo con plomada', 'Rastrillo para bivalvos'],
+        'especies': ['Dorada', 'Lenguado', 'Gamba'],
+    },
+    {
+        'nombre': 'Arrecife artificial Rota',
+        'lat': 36.62, 'lon': -6.40,
+        'profundidad_m': 18,
+        'fondo': 'Roca/arrecife artificial',
+        'tecnicas': ['Jigging', 'Pesca de fondo'],
+        'especies': ['Lubina', 'Dentón', 'Pargo'],
+    },
+    {
+        'nombre': 'Fondos de arena exterior',
+        'lat': 36.58, 'lon': -6.45,
+        'profundidad_m': 25,
+        'fondo': 'Arena',
+        'tecnicas': ['Arrastre', 'Palangre de fondo'],
+        'especies': ['Lenguado', 'Gamba', 'Langostino'],
+    },
+    {
+        'nombre': 'Caño de El Puerto',
+        'lat': 36.60, 'lon': -6.22,
+        'profundidad_m': 5,
+        'fondo': 'Fango/arena',
+        'tecnicas': ['Fondo simple', 'Marisqueo'],
+        'especies': ['Dorada', 'Lubina', 'Choco'],
+    },
+    {
+        'nombre': 'Aguas abiertas Golfo Cádiz',
+        'lat': 36.45, 'lon': -6.60,
+        'profundidad_m': 80,
+        'fondo': 'Alta mar',
+        'tecnicas': ['Curricán', 'Jigging profundo', 'Palangre'],
+        'especies': ['Atún', 'Pez espada', 'Pargo'],
+    },
+]
+
 def _solunar_times(lat=36.637, lon=-6.362, date=None):
     """Calculate solunar major/minor times for a given location and date.
     Returns list of {time, type, duration_min} dicts.
@@ -1306,6 +1349,7 @@ def fetch_pesca():
         'profundidad_color': profundidad_color,
         'reasons_ok': reasons_ok,
         'reasons_bad': reasons_bad,
+        'zonas_pesca': ZONAS_PESCA_ROTA,
     }
 
 def fetch_corrientes(lat=36.62, lon=-6.35):

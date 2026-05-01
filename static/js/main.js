@@ -495,3 +495,43 @@ function loadVigilanciaAlerts() {
 }
 loadVigilanciaAlerts();
 setInterval(loadVigilanciaAlerts, 300000);
+
+// --- VIGILANCIA OVERVIEW WIDGET ---
+function loadVigilanciaOverview() {
+    const container = document.getElementById('vigilancia-estado-container');
+    const subText = document.getElementById('vigilancia-sub-text');
+    if (!container) return;
+    fetch('/api/dashboard/vigilancia')
+        .then(r => r.json())
+        .then(d => {
+            const rojo = d.rojo || 0;
+            const amarillo = d.amarillo || 0;
+            const total = d.total || 0;
+            const enRoz = d.en_roz || 0;
+            const intercept = d.interceptacion || 0;
+
+            let stateColor = '#22c55e';
+            let stateLabel = 'NORMAL';
+            if (intercept > 0) { stateColor = '#ef4444'; stateLabel = 'ALERTA'; }
+            else if (rojo > 0 || enRoz > 0) { stateColor = '#ef4444'; stateLabel = 'ROJO'; }
+            else if (amarillo > 0) { stateColor = '#f59e0b'; stateLabel = 'AMARILLO'; }
+
+            const widget = document.getElementById('widget-vigilancia');
+            if (widget) {
+                widget.style.borderColor = stateColor + '44';
+                if (intercept > 0) widget.style.animation = 'pulse 1s infinite';
+                else widget.style.animation = '';
+            }
+
+            container.innerHTML = `<div style="font-size:1.0rem;font-weight:700;color:${stateColor}">${stateLabel}</div>
+                <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.2rem">
+                    ${rojo > 0 ? `<span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px">${rojo} ROJO</span>` : ''}
+                    ${amarillo > 0 ? `<span style="background:#f59e0b;color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px">${amarillo} AMR</span>` : ''}
+                    ${enRoz > 0 ? `<span style="background:rgba(239,68,68,0.6);color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px">${enRoz} ROZ</span>` : ''}
+                </div>`;
+            if (subText) subText.textContent = `${total} buques en área`;
+        })
+        .catch(() => {});
+}
+loadVigilanciaOverview();
+setInterval(loadVigilanciaOverview, 300000);

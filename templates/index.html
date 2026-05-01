@@ -184,6 +184,15 @@
             <span class="metrica-sub" id="mareas-next-text">Cargando mareas...</span>
         </div>
 
+        {% if has_ais %}
+        <div class="card-metrica" id="widget-vigilancia" style="cursor:pointer" onclick="switchTab('dashboard');switchDashTab('vigilancia')">
+            <div id="vigilancia-estado-container">
+                <div style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.4)">AIS</div>
+            </div>
+            <span class="metrica-sub" id="vigilancia-sub-text">Cargando vigilancia...</span>
+        </div>
+        {% endif %}
+
     </div>
 </div>
 
