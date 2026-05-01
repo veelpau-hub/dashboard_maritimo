@@ -335,11 +335,37 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
    - En lugar de solo la brújula, añadir mini polar chart de dirección + velocidad (D3)
    - Widget de viento ampliado en overview
 
+---
+
+## Iteración 19 (2026-05-01, ~07:45 UTC)
+
+### Fase 2A — Crítica iter 19
+- El submenu tiene 12 tabs — en móvil se desborda horizontalmente pero sin indicación visual de scroll
+- Los umbrales de alerta (ola, viento, presión) están hardcoded — sería mejor que el usuario los configure
+- No hay forma de marcar un buque AMARILLO como "conocido/aprobado" para reducir ruido en vigilancia
+
+### Fase 2B — Vigilancia: lista de buques conocidos/aprobados
+- Nueva tabla SQLite `buques_aprobados` (mmsi, nombre, motivo, creado)
+- Si un buque está en la lista → se clasifica como VERDE aunque sea tipo desconocido
+- Backend: GET/POST/DELETE /api/buques_aprobados
+- Frontend: botón "Aprobar" en tabla vigilancia para buques AMARILLO
+
+### Fase 2C — Pesca: notas en mejores horas
+- Mejorar `fetch_pesca` para devolver best_hours como lista de objetos con {hora, nota} en lugar de solo string
+- Nota incluye: "Pleamar 12:45" / "30min tras amanecer" / "Mejor solunar"
+
+### Fase 3 — Sistema de toast notifications
+- Función `showToast(msg, type, duration)` en main.js: crea div fijo bottom-right que desaparece
+- Tipos: 'info', 'warning', 'error'
+- Se dispara cuando:
+  - Presión cae > 3 hPa/h (detectado en updatePresionTrend)
+  - En auto-refresh: ola > 2m (si era < 2m antes)
+  - En vigilancia: aparece buque ROJO nuevo
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)
 - Datos boya real Cádiz (vs modelo Open-Meteo)
 - Batimetría overlay en el mapa
-- Notificaciones push (viento > X kt, oleaje > Xm)
 - Exportar datos a CSV/PDF
 - Comparativa histórica (año anterior)

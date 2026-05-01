@@ -105,6 +105,14 @@ def init_db():
         )
     ''')
     c.execute('''
+        CREATE TABLE IF NOT EXISTS buques_aprobados (
+            mmsi TEXT PRIMARY KEY,
+            nombre TEXT,
+            motivo TEXT,
+            creado TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    c.execute('''
         CREATE TABLE IF NOT EXISTS capturas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             especie TEXT NOT NULL,
@@ -176,6 +184,54 @@ def get_vigilancia_log(limit=50):
     conn.close()
     return [{'id':r[0],'mmsi':r[1],'nombre':r[2],'amenaza':r[3],'evento':r[4],
              'velocidad':r[5],'lat':r[6],'lon':r[7],'ts':r[8]} for r in rows]
+
+# --- BUQUES APROBADOS (whitelist) ---
+_buques_aprobados_cache: set = set()  # in-memory set of approved MMSIs
+
+def _load_buques_aprobados():
+    """Load approved vessels from SQLite into memory cache."""
+    global _buques_aprobados_cache
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    try:
+        c.execute('SELECT mmsi FROM buques_aprobados')
+        rows = c.fetchall()
+        _buques_aprobados_cache = {r[0] for r in rows}
+    except Exception:
+        _buques_aprobados_cache = set()
+    conn.close()
+
+def get_buques_aprobados():
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('SELECT mmsi, nombre, motivo, creado FROM buques_aprobados ORDER BY creado DESC')
+    rows = c.fetchall()
+    conn.close()
+    return [{'mmsi': r[0], 'nombre': r[1], 'motivo': r[2], 'creado': r[3]} for r in rows]
+
+def add_buque_aprobado(mmsi, nombre='', motivo=''):
+    mmsi = str(mmsi)[:20]
+    nombre = str(nombre)[:100]
+    motivo = str(motivo)[:200]
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('INSERT OR REPLACE INTO buques_aprobados (mmsi, nombre, motivo) VALUES (?,?,?)',
+              (mmsi, nombre, motivo))
+    conn.commit()
+    conn.close()
+    _buques_aprobados_cache.add(mmsi)
+
+def delete_buque_aprobado(mmsi):
+    mmsi = str(mmsi)[:20]
+    conn = sqlite3.connect('preferencias.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM buques_aprobados WHERE mmsi = ?', (mmsi,))
+    conn.commit()
+    conn.close()
+    _buques_aprobados_cache.discard(mmsi)
+
+# Load approved vessels on startup (after init_db)
+_load_buques_aprobados()
 
 # --- CAPTURAS ---
 def get_capturas():
@@ -681,6 +737,10 @@ def _vessel_in_roz(lat, lon):
 
 def _classify_threat(vessel):
     """Classify vessel threat level: ROJO/AMARILLO/VERDE"""
+    mmsi = str(vessel.get('mmsi') or '')
+    # Check approved whitelist first
+    if mmsi in _buques_aprobados_cache:
+        return 'VERDE'
     name = (vessel.get('name') or '').strip().upper()
     vtype = str(vessel.get('type') or '').strip().upper()
     # Military / unknown type without proper name
@@ -989,6 +1049,8 @@ def fetch_pesca():
     tide_state = 'desconocido'
     best_fishing_hours = []
 
+    best_fishing_hours_with_notes = []  # list of {hora, nota}
+
     if extremes:
         # Determine tide direction (entrante/saliente)
         for i in range(len(extremes) - 1):
@@ -1008,9 +1070,13 @@ def fetch_pesca():
             try:
                 hh, mm = map(int, e['time'].split(':'))
                 base = hh * 60 + mm
+                tipo = 'Pleamar' if e.get('type') == 'pleamar' else 'Bajamar'
                 for offset in [-60, 60]:
                     h2 = (base + offset) % 1440
-                    best_fishing_hours.append(f"{h2//60:02d}:{h2%60:02d}")
+                    hora_str = f"{h2//60:02d}:{h2%60:02d}"
+                    nota = f"1h {'antes' if offset < 0 else 'después'} de {tipo} {e['time']}"
+                    best_fishing_hours_with_notes.append({'hora': hora_str, 'nota': nota})
+                    best_fishing_hours.append(hora_str)
             except Exception:
                 pass
 
@@ -1020,10 +1086,11 @@ def fetch_pesca():
         ss = datos.get('sunset', '20:00')
         srh, srm = map(int, sr.split(':'))
         ssh, ssm = map(int, ss.split(':'))
-        # 30min after sunrise
         sr_window = f"{(srh*60+srm+30)//60:02d}:{(srh*60+srm+30)%60:02d}"
-        # 30min before sunset
         ss_window = f"{(ssh*60+ssm-30)//60:02d}:{(ssh*60+ssm-30)%60:02d}"
+        best_fishing_hours_with_notes = [{'hora': sr_window, 'nota': '30min tras amanecer'}] + \
+                                         best_fishing_hours_with_notes + \
+                                         [{'hora': ss_window, 'nota': '30min antes del ocaso'}]
         best_fishing_hours = [sr_window] + best_fishing_hours + [ss_window]
     except Exception:
         pass
@@ -1118,6 +1185,7 @@ def fetch_pesca():
         'fishing_index': fishing_index,
         'go_nogo': {'go': go, 'limiter': limiter},
         'best_hours': sorted(set(best_fishing_hours)),
+        'best_hours_detail': sorted(best_fishing_hours_with_notes, key=lambda x: x['hora']),
         'tide_state': tide_state,
         'moon': moon,
         'solunar': solunar,
@@ -1781,6 +1849,23 @@ def api_delete_captura(cap_id):
     return jsonify({'ok': True})
 
 # --- ROUTING METEOROLÓGICO ---
+@app.route('/api/buques_aprobados', methods=['GET'])
+def api_get_buques_aprobados():
+    return jsonify({'buques': get_buques_aprobados()})
+
+@app.route('/api/buques_aprobados', methods=['POST'])
+def api_add_buque_aprobado():
+    data = request.get_json()
+    if not data or not data.get('mmsi'):
+        return jsonify({'error': 'mmsi requerido'}), 400
+    add_buque_aprobado(data['mmsi'], data.get('nombre', ''), data.get('motivo', ''))
+    return jsonify({'ok': True})
+
+@app.route('/api/buques_aprobados/<mmsi>', methods=['DELETE'])
+def api_delete_buque_aprobado(mmsi):
+    delete_buque_aprobado(mmsi)
+    return jsonify({'ok': True})
+
 @app.route('/api/routing')
 def api_routing():
     try:

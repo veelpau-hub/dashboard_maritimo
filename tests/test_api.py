@@ -219,6 +219,53 @@ def test_vigilancia_interceptacion_field(client, monkeypatch):
     assert 'interceptacion' in d
     assert d['interceptacion'] == 0
 
+def test_buques_aprobados_crud(client):
+    # Add
+    r = client.post('/api/buques_aprobados', json={
+        'mmsi': '123456789', 'nombre': 'Test Ship', 'motivo': 'Pesquero local conocido'
+    })
+    assert r.status_code == 200
+    assert r.get_json()['ok'] is True
+
+    # List
+    r2 = client.get('/api/buques_aprobados')
+    assert r2.status_code == 200
+    d = r2.get_json()
+    assert any(b['mmsi'] == '123456789' for b in d['buques'])
+
+    # Delete
+    r3 = client.delete('/api/buques_aprobados/123456789')
+    assert r3.status_code == 200
+    assert r3.get_json()['ok'] is True
+
+def test_buques_aprobados_missing_mmsi(client):
+    r = client.post('/api/buques_aprobados', json={'nombre': 'No MMSI'})
+    assert r.status_code == 400
+
+def test_pesca_best_hours_detail(client, monkeypatch):
+    """Test that best_hours_detail is present and has nota field."""
+    import app as flask_app
+    monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {
+        'altura_max': 0.5, 'viento_kmh': 10, 'visibilidad': 10,
+        'presion': 1013, 'sunrise': '07:00', 'sunset': '20:00', 'temp_agua': 18.5,
+        'temperatura_c': 22.0, 'sensacion_c': 21.0,
+    })
+    monkeypatch.setattr(flask_app, 'fetch_mareas', lambda: {
+        'extremes': [{'type': 'bajamar', 'time': '06:30', 'height': 0.4},
+                     {'type': 'pleamar', 'time': '12:45', 'height': 2.8}]
+    })
+    monkeypatch.setattr(flask_app, 'fetch_oleaje', lambda: {
+        'time': [], 'height': [], 'direction': [], 'period': [], 'temp_agua': [18.5]*168,
+    })
+    flask_app._dash_cache.clear()
+    r = client.get('/api/dashboard/pesca')
+    assert r.status_code == 200
+    d = r.get_json()
+    assert 'best_hours_detail' in d
+    if d['best_hours_detail']:
+        assert 'hora' in d['best_hours_detail'][0]
+        assert 'nota' in d['best_hours_detail'][0]
+
 def test_dashboard_pesca(client, monkeypatch):
     # Mock underlying data sources
     monkeypatch.setattr(flask_app, 'get_datos_maritimos', lambda: {

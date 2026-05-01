@@ -133,6 +133,8 @@ function updatePresionTrend() {
             badge.style.color = color;
             badge.textContent = `${icon} ${d.trend}`;
             if (d.delta_h) badge.textContent += ` (${d.delta_h > 0 ? '+' : ''}${d.delta_h} hPa/h)`;
+            // Check toast for pressure
+            if (d.alert) checkConditionAlerts({presion_trend: d});
             // Storm banner
             if (d.alert) {
                 let banner = document.getElementById('storm-alert-banner');
@@ -168,6 +170,7 @@ function autoRefreshOverview() {
                 document.getElementById('temp-valor').textContent = d.temperatura_c + '°';
                 document.getElementById('sensacion').textContent = d.sensacion_c + '°C';
             }
+            checkConditionAlerts(d);
             // Show last updated badge
             let badge = document.getElementById('auto-refresh-badge');
             if (!badge) {
@@ -271,6 +274,57 @@ function renderSettingsWidgets() {
 setTempUnit(tempUnit);
 setWindUnit(windUnit);
 setLang(lang);
+
+// --- TOAST NOTIFICATION SYSTEM ---
+let _toastContainer = null;
+const _shownToasts = new Set();
+
+function showToast(msg, type = 'info', duration = 6000) {
+    if (!_toastContainer) {
+        _toastContainer = document.createElement('div');
+        _toastContainer.id = 'toast-container';
+        _toastContainer.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column-reverse;gap:0.5rem;max-width:320px';
+        document.body.appendChild(_toastContainer);
+    }
+    const colors = {info: '#4AC8E8', warning: '#f59e0b', error: '#ef4444'};
+    const color = colors[type] || '#4AC8E8';
+    const toast = document.createElement('div');
+    toast.style.cssText = `background:rgba(13,21,32,0.97);border:1px solid ${color};border-left:4px solid ${color};border-radius:8px;padding:0.6rem 1rem;font-size:0.75rem;color:white;cursor:pointer;transition:opacity 0.3s;box-shadow:0 4px 20px rgba(0,0,0,0.5)`;
+    toast.innerHTML = `<strong style="color:${color}">${type === 'error' ? 'ALERTA' : type === 'warning' ? 'AVISO' : 'INFO'}</strong> ${msg}`;
+    toast.onclick = () => toast.remove();
+    _toastContainer.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, duration);
+}
+
+// Check conditions and fire toasts
+let _prevOlaMax = null;
+let _prevPresion = null;
+
+function checkConditionAlerts(datos) {
+    const olaMax = datos?.altura_max;
+    const presion = datos?.presion;
+    const presionTrend = datos?.presion_trend;
+
+    // Toast if waves exceeded 2m threshold
+    if (olaMax != null && _prevOlaMax != null && _prevOlaMax < 2.0 && olaMax >= 2.0) {
+        const key = `olas_${Math.floor(Date.now()/60000)}`;
+        if (!_shownToasts.has(key)) {
+            _shownToasts.add(key);
+            showToast(`Olas superaron 2m (${olaMax.toFixed(1)}m). Precaución para navegación costera.`, 'warning', 8000);
+        }
+    }
+    _prevOlaMax = olaMax;
+
+    // Toast if pressure alarm
+    if (presionTrend?.alert) {
+        const key = `presion_alert_${Math.floor(Date.now()/300000)}`;
+        if (!_shownToasts.has(key)) {
+            _shownToasts.add(key);
+            const delta = presionTrend.delta_h;
+            showToast(`Presión barométrica en descenso rápido (${delta} hPa/h). Posible deterioro del tiempo.`, 'error', 10000);
+        }
+    }
+}
 
 // --- SCORE DÍA BADGE ---
 function loadScoreDia() {

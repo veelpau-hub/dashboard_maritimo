@@ -602,15 +602,20 @@ function renderVigilancia(data, el) {
         vesselRows = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:0.5rem 0">Sin buques en el área de vigilancia.</p>';
     } else {
         const rozBadge = '<span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:6px;font-weight:700;margin-left:4px">ROZ</span>';
-        const rowsHtml = vessels.map(v => `
-            <tr data-threat="${esc(v.amenaza)}" data-status="${esc(v.estado)}">
-                <td>${esc(v.name)}${v.in_roz ? rozBadge : ''}</td>
+        const rowsHtml = vessels.map(v => {
+            const safeMmsi = String(v.mmsi||'').replace(/[^0-9]/g,'');
+            const aprobarBtn = v.amenaza === 'AMARILLO'
+                ? `<button onclick="aprobarBuque('${esc(safeMmsi)}','${esc(v.name||'')}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:4px;color:#22c55e;font-size:0.6rem;padding:1px 5px;cursor:pointer;margin-top:2px">Aprobar</button>`
+                : '';
+            return `<tr data-threat="${esc(v.amenaza)}" data-status="${esc(v.estado)}">
+                <td><div>${esc(v.name)}${v.in_roz ? rozBadge : ''}</div>${aprobarBtn}</td>
                 <td>${esc(v.type_name||v.type||'-')}</td>
                 <td>${threatBadge(v.amenaza)}</td>
                 <td>${statusBadge(v.estado)}</td>
                 <td>${v.speed != null ? esc(v.speed.toFixed(1)) + ' kt' : '-'}</td>
-                <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
-            </tr>`).join('');
+                <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${safeMmsi}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
+            </tr>`;
+        }).join('');
         vesselRows = `${filterControls}<div style="overflow-x:auto"><table class="ais-table" id="vig-table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Amenaza</th><th>Estado</th><th>SOG</th><th>MMSI</th></tr></thead>
             <tbody id="vig-tbody">${rowsHtml}</tbody></table></div>`;
@@ -688,6 +693,21 @@ function exportVigilanciaCSV() {
     URL.revokeObjectURL(url);
 }
 
+function aprobarBuque(mmsi, nombre) {
+    const motivo = prompt(`Aprobar buque ${nombre} (MMSI: ${mmsi}) — motivo (opcional):`);
+    if (motivo === null) return; // cancelled
+    fetch('/api/buques_aprobados', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mmsi, nombre, motivo})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) {
+            if (typeof showToast === 'function') showToast(`Buque ${nombre} aprobado como VERDE.`, 'info', 5000);
+            switchDashTab('vigilancia');
+        }
+    }).catch(() => {});
+}
+
 function filterVigTable() {
     const threat = document.getElementById('vig-filter-threat')?.value || '';
     const status = document.getElementById('vig-filter-status')?.value || '';
@@ -735,9 +755,13 @@ function renderPesca(data, el) {
             </div>` : ''}
          </div>`).join('');
 
-    const hoursHtml = hours.map(h =>
-        `<span style="background:rgba(74,200,232,0.12);border:1px solid rgba(74,200,232,0.25);border-radius:6px;padding:3px 10px;font-size:0.78rem;color:#4AC8E8">${esc(h)}</span>`
-    ).join(' ');
+    const hoursDetail = data.best_hours_detail || hours.map(h => ({hora: h, nota: ''}));
+    const hoursHtml = hoursDetail.slice(0, 8).map(hd =>
+        `<div style="display:flex;align-items:center;gap:0.4rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <span style="background:rgba(74,200,232,0.12);border:1px solid rgba(74,200,232,0.25);border-radius:6px;padding:2px 10px;font-size:0.78rem;color:#4AC8E8;min-width:44px;text-align:center">${esc(hd.hora||hd)}</span>
+            ${hd.nota ? `<span style="font-size:0.65rem;color:rgba(255,255,255,0.35)">${esc(hd.nota)}</span>` : ''}
+        </div>`
+    ).join('');
 
     const reasonsOk = (data.reasons_ok||[]).map(r => `<div style="color:#22c55e;font-size:0.75rem">✓ ${esc(r)}</div>`).join('');
     const reasonsBad = (data.reasons_bad||[]).map(r => `<div style="color:#ef4444;font-size:0.75rem">✗ ${esc(r)}</div>`).join('');
