@@ -479,6 +479,29 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Botón de pantalla completa (Fullscreen API) en la interfaz
 - Botón "Compartir estado" que crea una URL con los parámetros actuales (location, tab)
 
+---
+
+## Iteración 25 (2026-05-01, ~07:58 UTC)
+
+### Fase 2A — Seguridad y correcciones
+- El campo `draught` en la tabla AIS puede ser null — asegurar escape correcto
+- La tabla vigilancia ahora tiene botón "Mapa" pero si no hay lat/lon en el vessel, falla silenciosamente (ya protegido con `v.lat && v.lon`)
+- Revisar que todos los inputs de usuario pasan por `esc()` antes de innerHTML
+
+### Fase 2B — Pesca: pesca desde tierra vs barco
+- Añadir recomendación en función del índice: si olas > 1.5m → "Pesca desde tierra recomendada (espigones, playas)", si olas <= 1.5m → "Condiciones aptas para embarcación"
+- Añadir esta recomendación al go_nogo output
+
+### Fase 2C — Corrientes en overview
+- Widget de corrientes en overview: velocidad actual (m/s) y dirección
+- Clicable para ir a tab corrientes
+
+### Fase 3 — Mejora del score pesca con consejos concretos
+- Score de pesca ahora devuelve `consejo` string con sugerencia específica
+- Si score < 5 y olas > 2m: "Espera a que bajen las olas"
+- Si score < 5 y viento > 25: "Espera a mañana con menos viento"
+- Si score >= 8: "Excelentes condiciones — ¡zarpa!"
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

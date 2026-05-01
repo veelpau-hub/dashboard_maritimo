@@ -1291,6 +1291,33 @@ def fetch_pesca():
     elif presion_trend.get('trend') == 'bajando':
         reasons_ok.append('Presion bajando — buena picada esperada')
 
+    # Go/No-Go consejo
+    if go:
+        if fishing_index >= 8:
+            consejo = 'Excelentes condiciones — ¡zarpa sin dudarlo!'
+        elif fishing_index >= 6:
+            consejo = 'Buenas condiciones para salir en embarcación.'
+        else:
+            consejo = 'Condiciones aceptables. Precaución con los cambios.'
+    else:
+        if wave_h > 2.0:
+            consejo = f'Espera a que bajen las olas (ahora {wave_h:.1f}m, límite 2m).'
+        elif wind_kmh > 25:
+            consejo = f'Viento demasiado fuerte ({wind_kmh:.0f} km/h). Consulta el parte de mañana.'
+        else:
+            consejo = 'Condiciones no aptas para salir. Consulta en unas horas.'
+
+    # Recommendation: from land or boat?
+    if wave_h <= 1.5 and wind_kmh <= 20:
+        pesca_modo = 'embarcacion'
+        modo_text = 'Condiciones para embarcación'
+    elif wave_h <= 2.5:
+        pesca_modo = 'tierra'
+        modo_text = 'Pesca desde tierra recomendada (espigones, playas)'
+    else:
+        pesca_modo = 'no'
+        modo_text = 'No recomendado salir'
+
     # Cebo recommendations for in-season species + temperature check
     temp_actual = datos.get('temp_agua')
     species_with_cebo = []
@@ -1350,6 +1377,9 @@ def fetch_pesca():
         'reasons_ok': reasons_ok,
         'reasons_bad': reasons_bad,
         'zonas_pesca': ZONAS_PESCA_ROTA,
+        'consejo': consejo,
+        'pesca_modo': pesca_modo,
+        'modo_text': modo_text,
     }
 
 def fetch_corrientes(lat=36.62, lon=-6.35):

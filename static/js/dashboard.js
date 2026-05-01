@@ -906,6 +906,8 @@ function renderPesca(data, el) {
                 <div class="dash-card-label">¿Puedo salir hoy?</div>
                 <div style="font-size:1.4rem;font-weight:700;color:${goColor};margin:0.3rem 0">${goText}</div>
                 ${gn.limiter ? `<div style="font-size:0.7rem;color:#f59e0b">⚠ ${esc(gn.limiter)}</div>` : '<div style="font-size:0.7rem;color:#22c55e">Condiciones favorables</div>'}
+                ${data.consejo ? `<div style="font-size:0.68rem;color:rgba(255,255,255,0.5);margin-top:0.3rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.3rem">${esc(data.consejo)}</div>` : ''}
+                ${data.modo_text ? `<div style="font-size:0.68rem;color:#4AC8E8;margin-top:0.2rem">⛵ ${esc(data.modo_text)}</div>` : ''}
             </div>
             <div class="dash-card" style="text-align:center">
                 <div class="dash-card-label">Fase lunar</div>

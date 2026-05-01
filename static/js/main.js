@@ -605,3 +605,27 @@ function loadVigilanciaOverview() {
 }
 loadVigilanciaOverview();
 setInterval(loadVigilanciaOverview, 300000);
+
+// --- CORRIENTES OVERVIEW WIDGET ---
+function loadCorrientesOverview() {
+    const container = document.getElementById('corrientes-container');
+    if (!container) return;
+    fetch('/api/dashboard/corrientes')
+        .then(r => r.json())
+        .then(d => {
+            const vel = d.current_vel;
+            const dir = d.current_dir;
+            if (vel == null) {
+                container.innerHTML = '<div style="font-size:0.8rem;color:rgba(255,255,255,0.3)">Sin datos</div>';
+                return;
+            }
+            const velColor = vel < 0.5 ? '#22c55e' : vel < 1.0 ? '#f59e0b' : '#ef4444';
+            const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+            const dirName = dir != null ? dirs[Math.round(dir / 22.5) % 16] : '-';
+            container.innerHTML = `<div style="font-size:1.1rem;font-weight:700;color:${velColor}">${vel.toFixed(2)} m/s</div>
+                <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-top:0.1rem">${dirName} · ${dir != null ? dir.toFixed(0) + '°' : '-'}</div>`;
+        })
+        .catch(() => {});
+}
+loadCorrientesOverview();
+setInterval(loadCorrientesOverview, 600000);
