@@ -271,6 +271,38 @@ function renderSettingsWidgets() {
     });
 }
 
+// --- ALERT THRESHOLDS (user-configurable) ---
+let alertSettings = {
+    olaMax: parseFloat(localStorage.getItem('alert_ola_max') || '2.0'),
+    vientoMax: parseFloat(localStorage.getItem('alert_viento_max') || '25'),
+    presionMin: parseFloat(localStorage.getItem('alert_presion_min') || '995'),
+};
+
+function saveAlertSettings() {
+    alertSettings.olaMax = parseFloat(document.getElementById('alert-ola-max')?.value || '2.0');
+    alertSettings.vientoMax = parseFloat(document.getElementById('alert-viento-max')?.value || '25');
+    alertSettings.presionMin = parseFloat(document.getElementById('alert-presion-min')?.value || '995');
+    localStorage.setItem('alert_ola_max', alertSettings.olaMax);
+    localStorage.setItem('alert_viento_max', alertSettings.vientoMax);
+    localStorage.setItem('alert_presion_min', alertSettings.presionMin);
+    showToast('Umbrales de alerta guardados.', 'info', 3000);
+}
+
+function loadAlertSettingsUI() {
+    const olaEl = document.getElementById('alert-ola-max');
+    const vientoEl = document.getElementById('alert-viento-max');
+    const presionEl = document.getElementById('alert-presion-min');
+    if (olaEl) olaEl.value = alertSettings.olaMax;
+    if (vientoEl) vientoEl.value = alertSettings.vientoMax;
+    if (presionEl) presionEl.value = alertSettings.presionMin;
+}
+// Load alert settings when settings panel opens
+const _origSwitchTab = switchTab;
+window.switchTab = function(tab) {
+    _origSwitchTab(tab);
+    if (tab === 'settings') loadAlertSettingsUI();
+};
+
 setTempUnit(tempUnit);
 setWindUnit(windUnit);
 setLang(lang);
@@ -304,24 +336,40 @@ function checkConditionAlerts(datos) {
     const olaMax = datos?.altura_max;
     const presion = datos?.presion;
     const presionTrend = datos?.presion_trend;
+    const viento = datos?.viento_kmh;
 
-    // Toast if waves exceeded 2m threshold
-    if (olaMax != null && _prevOlaMax != null && _prevOlaMax < 2.0 && olaMax >= 2.0) {
+    // Toast if waves exceeded threshold
+    const olaThreshold = alertSettings?.olaMax ?? 2.0;
+    if (olaMax != null && _prevOlaMax != null && _prevOlaMax < olaThreshold && olaMax >= olaThreshold) {
         const key = `olas_${Math.floor(Date.now()/60000)}`;
         if (!_shownToasts.has(key)) {
             _shownToasts.add(key);
-            showToast(`Olas superaron 2m (${olaMax.toFixed(1)}m). Precaución para navegación costera.`, 'warning', 8000);
+            showToast(`Olas superaron ${olaThreshold}m (${olaMax.toFixed(1)}m). Precaución para navegación costera.`, 'warning', 8000);
         }
     }
     _prevOlaMax = olaMax;
 
+    // Toast if wind exceeded threshold
+    const vientoThreshold = alertSettings?.vientoMax ?? 25;
+    if (viento != null && viento >= vientoThreshold) {
+        const key = `viento_${Math.floor(Date.now()/600000)}`; // every 10min
+        if (!_shownToasts.has(key)) {
+            _shownToasts.add(key);
+            showToast(`Viento fuerte: ${viento.toFixed(0)} km/h (umbral: ${vientoThreshold} km/h).`, 'warning', 7000);
+        }
+    }
+
     // Toast if pressure alarm
-    if (presionTrend?.alert) {
+    const presionThreshold = alertSettings?.presionMin ?? 995;
+    if (presionTrend?.alert || (presion != null && presion < presionThreshold)) {
         const key = `presion_alert_${Math.floor(Date.now()/300000)}`;
         if (!_shownToasts.has(key)) {
             _shownToasts.add(key);
-            const delta = presionTrend.delta_h;
-            showToast(`Presión barométrica en descenso rápido (${delta} hPa/h). Posible deterioro del tiempo.`, 'error', 10000);
+            const delta = presionTrend?.delta_h || 0;
+            const msg = presionTrend?.alert
+                ? `Presión barométrica en descenso rápido (${delta} hPa/h). Posible deterioro del tiempo.`
+                : `Presión baja: ${presion?.toFixed(0)} hPa (umbral: ${presionThreshold} hPa).`;
+            showToast(msg, 'error', 10000);
         }
     }
 }

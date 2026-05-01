@@ -748,8 +748,12 @@ function renderPesca(data, el) {
         'Pez espada':'🐟','Dentón':'🐡'
     };
     const speciesWithCebo = data.species_with_cebo || species.map(s => ({especie: s}));
-    const speciesCards = speciesWithCebo.map(sc =>
-        `<div class="dash-card" style="padding:0.6rem">
+    const speciesCards = speciesWithCebo.map(sc => {
+        const tempOkColor = sc.temp_ok === true ? '#22c55e' : sc.temp_ok === false ? '#f59e0b' : '';
+        const tempBadge = sc.temp_nota
+            ? `<div style="font-size:0.6rem;color:${tempOkColor||'rgba(255,255,255,0.3)'};margin-top:0.2rem">${sc.temp_ok === true ? '🌡✓' : sc.temp_ok === false ? '🌡✗' : '🌡'} ${esc(sc.temp_nota)}</div>`
+            : '';
+        return `<div class="dash-card" style="padding:0.6rem">
             <div style="display:flex;align-items:center;gap:0.4rem">
                 <span style="font-size:1.1rem">${speciesIcons[sc.especie]||'🐟'}</span>
                 <div>
@@ -757,11 +761,13 @@ function renderPesca(data, el) {
                     <div style="font-size:0.58rem;color:#22c55e">EN TEMPORADA</div>
                 </div>
             </div>
+            ${tempBadge}
             ${sc.cebo ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:0.35rem">
                 <div>🪱 ${esc(sc.cebo)}</div>
                 <div style="margin-top:0.15rem">🎣 ${esc(sc.tecnica||'')}</div>
             </div>` : ''}
-         </div>`).join('');
+         </div>`;
+    }).join('');
 
     const hoursDetail = data.best_hours_detail || hours.map(h => ({hora: h, nota: ''}));
     const hoursHtml = hoursDetail.slice(0, 8).map(hd =>

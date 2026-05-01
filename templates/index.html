@@ -284,6 +284,28 @@
         </div>
 
         <div class="settings-section">
+            <h3>Alertas</h3>
+            <div class="settings-row">
+                <span>Ola máx. alerta (m)</span>
+                <input id="alert-ola-max" type="number" step="0.1" min="0.5" max="5" value="2.0"
+                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
+                    onchange="saveAlertSettings()">
+            </div>
+            <div class="settings-row">
+                <span>Viento máx. alerta (km/h)</span>
+                <input id="alert-viento-max" type="number" step="1" min="10" max="100" value="25"
+                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
+                    onchange="saveAlertSettings()">
+            </div>
+            <div class="settings-row">
+                <span>Presión mín. alerta (hPa)</span>
+                <input id="alert-presion-min" type="number" step="1" min="960" max="1030" value="995"
+                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
+                    onchange="saveAlertSettings()">
+            </div>
+        </div>
+
+        <div class="settings-section">
             <h3>Acerca de</h3>
             <div class="settings-row"><span>Versión</span><span style="color:rgba(255,255,255,0.35)">1.0.0</span></div>
             <div class="settings-row"><span>Clima</span><span style="color:rgba(255,255,255,0.35)">Open-Meteo</span></div>

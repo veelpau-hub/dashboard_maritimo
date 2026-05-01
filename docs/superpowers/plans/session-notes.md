@@ -387,6 +387,33 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Tres mini-gráficos D3: temperatura agua 7 días, ola max 7 días, viento 7 días
 - Tabla de los últimos 7 días con datos clave
 
+---
+
+## Iteración 21 (2026-05-01, ~07:51 UTC)
+
+### Fase 2A — Rendimiento y UX
+- Caché vigilancia = 600s (10min) — muy alto para datos de seguridad marítima → reducir a 60s
+- El tab vigilancia usa `get_dash_cached('vigilancia', fetch_vigilancia)` — cambiarlo para saltarse el caché o usar TTL corto
+- El Settings panel tiene Temperatura/Viento/Idioma pero ningún umbral de alerta configurable
+
+### Fase 2B — Vigilancia: caché reducido + timestamps
+- Modificar: fetch_vigilancia bypassa el caché estándar (siempre fresco o TTL=60s)
+- Añadir timestamp de última actualización AIS a cada buque en la tabla
+- Nota: "Hace X min" para cada buque según `_ts` field
+
+### Fase 2C — Pesca: temperatura óptima por especie
+- Dict `TEMP_OPTIMA_ESPECIE` con rango temp agua óptimo por especie
+- En species_with_cebo añadir campo `temp_optima` y `temp_ok` (True/False según temp actual)
+- Visual en species card: indicador verde/rojo de temperatura
+
+### Fase 3 — Alertas configurables en Settings
+- Settings panel: nueva sección "Alertas" con tres inputs:
+  - Ola máxima (default: 2.0m)
+  - Viento máximo (default: 25 km/h)
+  - Presión mínima (default: 995 hPa)
+- Persistidos en localStorage
+- checkConditionAlerts() usa estos umbrales
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

@@ -569,6 +569,8 @@ _threading.Thread(target=_init_presion_history, daemon=True, name='presion-init'
 _dash_cache = {}
 _dash_cache_time = {}
 DASH_CACHE_SEGUNDOS = 600
+# Short TTL for time-sensitive tabs
+DASH_CACHE_VIGILANCIA_TTL = 60  # 1 minute for AIS/vigilancia
 
 def get_dash_cached(key, fetch_fn):
     now = time.time()
@@ -1041,6 +1043,21 @@ SPECIES_CALENDAR = {
     'Dentón':      [4,5,6,7,8,9,10],
 }
 
+TEMP_OPTIMA_ESPECIE = {
+    'Dorada':      (15, 22),   # °C
+    'Lubina':      (13, 20),
+    'Atún':        (20, 28),
+    'Pargo':       (18, 25),
+    'Boquerón':    (14, 22),
+    'Caballa':     (14, 21),
+    'Lenguado':    (10, 18),
+    'Choco':       (14, 20),
+    'Gamba':       (10, 18),
+    'Langostino':  (18, 26),
+    'Pez espada':  (20, 29),
+    'Dentón':      (16, 24),
+}
+
 CEBO_RECOMENDADO = {
     'Dorada':      {'cebo': 'Berberecho, mejillón, calamar', 'tecnica': 'Fondo con plomada', 'profundidad': 'fondo'},
     'Lubina':      {'cebo': 'Sardina, lanzón, gusano', 'tecnica': 'Curricán superficial o jigging', 'profundidad': 'superficie'},
@@ -1231,11 +1248,30 @@ def fetch_pesca():
     elif presion_trend.get('trend') == 'bajando':
         reasons_ok.append('Presion bajando — buena picada esperada')
 
-    # Cebo recommendations for in-season species
-    species_with_cebo = [
-        {**({'especie': s}), **CEBO_RECOMENDADO.get(s, {'cebo': '—', 'tecnica': '—', 'profundidad': '—'})}
-        for s in in_season
-    ]
+    # Cebo recommendations for in-season species + temperature check
+    temp_actual = datos.get('temp_agua')
+    species_with_cebo = []
+    for s in in_season:
+        cebo_info = CEBO_RECOMENDADO.get(s, {'cebo': '—', 'tecnica': '—', 'profundidad': '—'})
+        temp_range = TEMP_OPTIMA_ESPECIE.get(s)
+        temp_ok = None
+        temp_nota = ''
+        if temp_range and temp_actual is not None:
+            tmin, tmax = temp_range
+            temp_ok = tmin <= temp_actual <= tmax
+            if temp_ok:
+                temp_nota = f'Temp. óptima ({tmin}-{tmax}°C)'
+            elif temp_actual < tmin:
+                temp_nota = f'Agua fría para esta especie (óptimo {tmin}-{tmax}°C)'
+            else:
+                temp_nota = f'Agua caliente para esta especie (óptimo {tmin}-{tmax}°C)'
+        species_with_cebo.append({
+            'especie': s,
+            **cebo_info,
+            'temp_optima': temp_range,
+            'temp_ok': temp_ok,
+            'temp_nota': temp_nota,
+        })
 
     # Water temperature depth advice
     temp_agua = datos.get('temp_agua')
@@ -1550,6 +1586,8 @@ def api_localize():
         'distance_km': round(dist, 1),
     })
 
+_LIVE_TABS = {'ais', 'vigilancia'}  # tabs with shorter cache TTL
+
 @app.route('/api/dashboard/<tab>')
 def api_dashboard(tab):
     if tab not in _DASH_FETCHERS:
@@ -1559,6 +1597,14 @@ def api_dashboard(tab):
         lon = request.args.get('lon', type=float)
         if lat is not None and lon is not None and tab in COORD_AWARE_TABS:
             return jsonify(_DASH_FETCHERS[tab](lat, lon))
+        # Use shorter TTL for live tabs
+        if tab in _LIVE_TABS:
+            now = time.time()
+            if tab in _dash_cache and now - _dash_cache_time.get(tab, 0) < DASH_CACHE_VIGILANCIA_TTL:
+                return jsonify(_dash_cache[tab])
+            _dash_cache[tab] = _DASH_FETCHERS[tab]()
+            _dash_cache_time[tab] = now
+            return jsonify(_dash_cache[tab])
         return jsonify(get_dash_cached(tab, _DASH_FETCHERS[tab]))
     except Exception as e:
         logging.error(f'Dashboard {tab}: {e}')
