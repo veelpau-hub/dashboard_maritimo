@@ -414,6 +414,29 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 - Persistidos en localStorage
 - checkConditionAlerts() usa estos umbrales
 
+---
+
+## Iteración 22 (2026-05-01, ~07:53 UTC)
+
+### Fase 2A — UX overview y calado
+- El score 0-100 en el badge es útil pero la barra visual haría más intuitiva la información
+- El overview no muestra datos de vigilancia (buques ROJO) aunque sea la feature más diferenciadora
+- El calado de buques (draught) está capturado desde ShipStaticData pero no se muestra en ningún lugar
+
+### Fase 2B — AIS/Vigilancia: calado + timestamp último avistamiento
+- Añadir columna "Calado" en tabla AIS (si disponible desde static data)
+- Añadir nota de "Hace X min" por buque (calculado desde `_ts` relativo a ahora)
+
+### Fase 2C — Profundidad de pesca por zona
+- Sección "Zonas de pesca Rota" con 4-5 zonas predefinidas (bajíos, arrecifes, fondos arenas)
+- Para cada zona: nombre, coordenadas aprox., profundidad, tipo de pesca recomendado
+
+### Fase 3 — Widget vigilancia en Overview
+- Nueva tarjeta `widget data-widget="vigilancia"` en el overview
+- Muestra: estado (VERDE/AMARILLO/ROJO), contador buques, clicable para ir a tab vigilancia
+- Se actualiza con el badge de alertas cada 5min
+- Si hay buques ROJO activos: tarjeta en rojo pulsante
+
 ## Próximas iteraciones — Ideas pendientes
 
 - Mareas reales desde Puertos del Estado (boya 3304 Rota)

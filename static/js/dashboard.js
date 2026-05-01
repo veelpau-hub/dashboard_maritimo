@@ -337,7 +337,7 @@ function renderAIS(data, el) {
             <button onclick="exportAISCSV()" style="background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.7rem;padding:4px 10px;cursor:pointer;margin-left:auto">Exportar CSV</button>
         </div>
         <div class="ais-table-wrap"><table class="ais-table" id="ais-main-table">
-            <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>MMSI</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Vel.</th><th>Rumbo</th><th>Destino</th><th>Calado</th><th>MMSI</th></tr></thead>
             <tbody id="ais-tbody"></tbody></table></div>`;
     renderAISRows(vessels);
     requestAnimationFrame(() => makeSortable('ais-main-table'));
@@ -358,14 +358,20 @@ function filterAISTable() {
 function renderAISRows(vessels) {
     const tbody = document.getElementById('ais-tbody');
     if (!tbody) return;
-    const rows = vessels.map(v=>`<tr>
-        <td>${esc(v.name)}</td>
+    const now_ts = Date.now() / 1000;
+    const rows = vessels.map(v=>{
+        const age_s = v._ts ? Math.round(now_ts - v._ts) : null;
+        const age_txt = age_s != null ? (age_s < 60 ? `${age_s}s` : `${Math.round(age_s/60)}min`) : '';
+        return `<tr>
+        <td><div>${esc(v.name)}</div>${age_txt ? `<div style="font-size:0.58rem;color:rgba(255,255,255,0.25)">hace ${age_txt}</div>` : ''}</td>
         <td style="font-size:0.7rem">${esc(v.type_name || String(v.type||'-'))}</td>
         <td>${v.speed!=null?v.speed.toFixed(1)+' kt':'-'}</td>
         <td>${v.course!=null?v.course.toFixed(0)+'°':'-'}</td>
         <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.destination?esc(v.destination):'-'}</td>
+        <td style="font-size:0.7rem;color:rgba(255,255,255,0.45)">${v.draught!=null?v.draught.toFixed(1)+'m':'-'}</td>
         <td><a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${String(v.mmsi||'').replace(/[^0-9]/g,'')}" target="_blank" style="color:#4AC8E8;font-size:0.7rem">${esc(String(v.mmsi||''))}</a></td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
     tbody.innerHTML = rows || '<tr><td colspan="6" style="color:rgba(255,255,255,0.3);text-align:center">Sin resultados</td></tr>';
 }
 
