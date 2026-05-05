@@ -238,6 +238,7 @@
       <div class="left-panel">
         <div class="grid-instruments">
 
+          <!-- Fila 1: WX-01(1) + WX-02(1) + WX-06 Temperatura(2) = 4 cols -->
           <!-- WX-01 WIND DIRECTION -->
           <div class="instrument" style="grid-column: span 1; height: 240px">
             <div class="inst-corner inst-corner--tl"></div>
@@ -274,6 +275,23 @@
             <div class="inst-body" id="beaufort-container"></div>
           </div>
 
+          <!-- WX-06 TEMPERATURE — span 2 (50%) — fila 1, encima de Humidity -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-06</span>
+                <span class="inst-name">TEMPERATURE</span>
+              </div>
+              <span class="inst-unit">&deg;C</span>
+            </div>
+            <div class="inst-body" id="termometro-container"></div>
+          </div>
+
+          <!-- Fila 2: WX-03(1) + WX-08 Humidity(1) + WX-05 Sun(2) = 4 cols -->
           <!-- WX-03 ATMOS PRESSURE -->
           <div class="instrument" style="grid-column: span 1; height: 240px">
             <div class="inst-corner inst-corner--tl"></div>
@@ -293,7 +311,7 @@
             </div>
           </div>
 
-          <!-- WX-08 HUMIDITY — fila 1, posición 4 -->
+          <!-- WX-08 HUMIDITY — fila 2, debajo de Temperature -->
           <div class="instrument" style="grid-column: span 1; height: 240px">
             <div class="inst-corner inst-corner--tl"></div>
             <div class="inst-corner inst-corner--tr"></div>
@@ -307,22 +325,6 @@
               <span class="inst-unit">%RH</span>
             </div>
             <div class="inst-body" id="humidity-container"></div>
-          </div>
-
-          <!-- WX-06 TEMPERATURE — span 2, fila 2 -->
-          <div class="instrument" style="grid-column: span 2; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
-            <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-06</span>
-                <span class="inst-name">TEMPERATURE</span>
-              </div>
-              <span class="inst-unit">&deg;C</span>
-            </div>
-            <div class="inst-body" id="termometro-container"></div>
           </div>
 
           <!-- WX-05 DAYLIGHT ARC — span 2, fila 2 -->
