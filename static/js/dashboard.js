@@ -40,7 +40,7 @@ function switchDashTab(tab) {
         <div class="dash-skeleton" style="height:100px"></div>
         <div class="dash-skeleton" style="height:70px"></div>`;
 
-    const coordAware = ['meteo','oleaje','prediccion','pesca','corrientes'];
+    const coordAware = ['meteo','oleaje','prediccion','pesca','corrientes','calidad','manana','hoy'];
     let url = `/api/dashboard/${tab}`;
     if (window.geoCoords && coordAware.includes(tab))
         url += `?lat=${window.geoCoords.lat}&lon=${window.geoCoords.lon}`;

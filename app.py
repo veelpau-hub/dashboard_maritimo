@@ -737,9 +737,9 @@ def fetch_prediccion(lat=36.62, lon=-6.35):
         })
     return {'days': days}
 
-def fetch_calidad():
+def fetch_calidad(lat=36.62, lon=-6.35):
     r = requests.get('https://air-quality-api.open-meteo.com/v1/air-quality', params={
-        'latitude': 36.62, 'longitude': -6.35,
+        'latitude': lat, 'longitude': lon,
         'hourly': 'pm10,pm2_5,ozone,uv_index,european_aqi',
         'timezone': 'Europe/Madrid', 'forecast_days': 1
     }, verify=False, timeout=10).json()
@@ -1437,18 +1437,18 @@ def fetch_corrientes(lat=36.62, lon=-6.35):
     except Exception as e:
         return {'current_vel': None, 'current_dir': None, 'samples': [], 'error': str(e)}
 
-def fetch_manana():
+def fetch_manana(lat=36.62, lon=-6.35):
     """Hour-by-hour conditions for tomorrow — same format as fetch_hoy."""
     from datetime import datetime, date, timedelta
     try:
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
         r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
-            'latitude': 36.62, 'longitude': -6.35,
+            'latitude': lat, 'longitude': lon,
             'hourly': 'wind_speed_10m,wind_gusts_10m,precipitation,weather_code',
-            'timezone': 'Europe/Madrid', 'forecast_days': 2
+            'timezone': 'auto', 'forecast_days': 2
         }, verify=False, timeout=10).json()
         r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
-            'latitude': 36.62, 'longitude': -6.35,
+            'latitude': lat, 'longitude': lon,
             'hourly': 'wave_height,wave_period',
             'timezone': 'Europe/Madrid', 'forecast_days': 2
         }, verify=False, timeout=10).json()
@@ -1571,17 +1571,17 @@ def fetch_routing(lat1=36.62, lon1=-6.35, lat2=36.72, lon2=-6.20):
     except Exception as e:
         return {'error': str(e), 'points': []}
 
-def fetch_hoy():
+def fetch_hoy(lat=36.62, lon=-6.35):
     """Hour-by-hour conditions for today — sailing/fishing window analysis."""
     from datetime import datetime, date
     try:
         r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
-            'latitude': 36.62, 'longitude': -6.35,
+            'latitude': lat, 'longitude': lon,
             'hourly': 'wind_speed_10m,wind_gusts_10m,precipitation,weather_code',
-            'timezone': 'Europe/Madrid', 'forecast_days': 1
+            'timezone': 'auto', 'forecast_days': 1
         }, verify=False, timeout=10).json()
         r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
-            'latitude': 36.62, 'longitude': -6.35,
+            'latitude': lat, 'longitude': lon,
             'hourly': 'wave_height,wave_period',
             'timezone': 'Europe/Madrid', 'forecast_days': 1
         }, verify=False, timeout=10).json()
@@ -1667,7 +1667,7 @@ def api_save_prefs():
     save_preferencias('default', data)
     return jsonify({'ok': True})
 
-COORD_AWARE_TABS = {'meteo', 'oleaje', 'prediccion', 'pesca', 'corrientes'}
+COORD_AWARE_TABS = {'meteo', 'oleaje', 'prediccion', 'pesca', 'corrientes', 'calidad', 'manana', 'hoy'}
 
 @app.route('/api/localize')
 def api_localize():
