@@ -874,6 +874,38 @@
     cp.style.display = 'none';
     cp.innerHTML = '<p class="config-titulo">Widgets</p><div class="config-grid" id="config-grid"></div><button class="config-guardar" onclick="guardarPrefs()">Save</button>';
     document.body.appendChild(cp);
+    // 4 .sidebar-btn stubs (main.js switchTab accesses them by index)
+    for (let i = 0; i < 4; i++) {
+      const sb = document.createElement('button');
+      sb.className = 'sidebar-btn';
+      sb.style.display = 'none';
+      document.body.appendChild(sb);
+    }
+    // 13 .submenu-btn stubs (dashboard.js switchDashTab accesses them by index)
+    for (let i = 0; i < 13; i++) {
+      const smb = document.createElement('button');
+      smb.className = 'submenu-btn';
+      smb.style.display = 'none';
+      const lbl = document.createElement('span');
+      lbl.className = 'submenu-label';
+      smb.appendChild(lbl);
+      document.body.appendChild(smb);
+    }
+    // widget-vigilancia (main.js loadVigilanciaOverview)
+    const wv = document.createElement('div');
+    wv.id = 'widget-vigilancia';
+    wv.style.display = 'none';
+    document.body.appendChild(wv);
+    // ais-status-indicator (main.js loadAISStatus)
+    const aisInd = document.createElement('span');
+    aisInd.id = 'ais-status-indicator';
+    aisInd.style.display = 'none';
+    document.body.appendChild(aisInd);
+    // ad-banner-dash stub (main.js switchTab)
+    const abd = document.createElement('div');
+    abd.id = 'ad-banner-dash';
+    abd.style.display = 'none';
+    document.body.appendChild(abd);
   })();
 
   // ── switchTab compatibility wrapper (called by dashboard.js and main.js) ──
@@ -964,6 +996,12 @@
     hookMap();
   }
 })();
+
+// Re-override switchTab AFTER main.js has rewritten it so navigation works with the new layout
+window.switchTab = function(tab) {
+  const tabMap = { overview:'overview', dashboard:'alerts', mapa:'chart', settings:'config' };
+  switchNav(tabMap[tab] || tab);
+};
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
