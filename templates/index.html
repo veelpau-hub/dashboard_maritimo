@@ -238,71 +238,46 @@
       <div class="left-panel">
         <div class="grid-instruments">
 
-          <!-- Fila 1: WX-01(1) + WX-02(1) + WX-06 Temperatura(2) = 4 cols -->
-          <!-- WX-01 WIND DIRECTION -->
-          <div class="instrument" style="grid-column: span 1; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+          <!-- ROW 1: Wind | Beaufort -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-01</span>
-                <span class="inst-name">WIND DIRECTION</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-01</span><span class="inst-name">WIND DIRECTION</span></div>
               <span class="inst-unit">&deg; TRUE</span>
             </div>
             <div class="inst-body" id="brujula-container"></div>
             <div class="inst-foot" id="wx01-foot">
-              SPD <span id="wx01-spd">{{ datos.viento_kmh }}</span> km/h &middot;
-              GST <span id="wx01-gst">{{ datos.racha_kmh }}</span> km/h
+              SPD <span id="wx01-spd">{{ datos.viento_kmh }}</span> km/h &middot; GST <span id="wx01-gst">{{ datos.racha_kmh }}</span> km/h
             </div>
           </div>
 
-          <!-- WX-02 BEAUFORT FORCE -->
-          <div class="instrument" style="grid-column: span 1; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-02</span>
-                <span class="inst-name">BEAUFORT FORCE</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-02</span><span class="inst-name">BEAUFORT FORCE</span></div>
               <span class="inst-unit">SCALE</span>
             </div>
             <div class="inst-body" id="beaufort-container"></div>
           </div>
 
-          <!-- WX-06 TEMPERATURE — span 2 (50%) — fila 1, encima de Humidity -->
+          <!-- ROW 2: Temperature | Pressure -->
           <div class="instrument" style="grid-column: span 2; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-06</span>
-                <span class="inst-name">TEMPERATURE</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-06</span><span class="inst-name">TEMPERATURE</span></div>
               <span class="inst-unit">&deg;C</span>
             </div>
             <div class="inst-body" id="termometro-container"></div>
           </div>
 
-          <!-- Fila 2: WX-03(1) + WX-08 Humidity(1) + WX-05 Sun(2) = 4 cols -->
-          <!-- WX-03 ATMOS PRESSURE -->
-          <div class="instrument" style="grid-column: span 1; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-03</span>
-                <span class="inst-name">ATMOS PRESSURE</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-03</span><span class="inst-name">ATMOS PRESSURE</span></div>
               <span class="inst-unit">hPa</span>
             </div>
             <div class="inst-body" id="presion-container"></div>
@@ -311,49 +286,12 @@
             </div>
           </div>
 
-          <!-- WX-08 HUMIDITY — fila 2, debajo de Temperature -->
-          <div class="instrument" style="grid-column: span 1; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
-            <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-08</span>
-                <span class="inst-name">HUMIDITY</span>
-              </div>
-              <span class="inst-unit">%RH</span>
-            </div>
-            <div class="inst-body" id="humidity-container"></div>
-          </div>
-
-          <!-- WX-05 DAYLIGHT ARC — span 2, fila 2 -->
-          <div class="instrument" style="grid-column: span 2; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
-            <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-05</span>
-                <span class="inst-name">DAYLIGHT ARC</span>
-              </div>
-              <span class="inst-unit">LOCAL</span>
-            </div>
-            <div class="inst-body" id="sol-container"></div>
-          </div>
-
-          <!-- WX-04 WAVE HEIGHT — span 4, fila 3 -->
+          <!-- ROW 3: Wave Height (full width) -->
           <div class="instrument" style="grid-column: span 4; height: 220px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-04</span>
-                <span class="inst-name">WAVE HEIGHT</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-04</span><span class="inst-name">WAVE HEIGHT</span></div>
               <span class="inst-unit">Hs &middot; 24H</span>
             </div>
             <div class="inst-body" id="grafico-olas" style="width:100%; overflow:hidden"></div>
@@ -364,34 +302,44 @@
             </div>
           </div>
 
-          <!-- WX-07 VISIBILITY -->
-          <div class="instrument" style="grid-column: span {% if datos.temp_agua %}3{% else %}4{% endif %}; height: 200px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+          <!-- ROW 4: Daylight Arc | Humidity -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-07</span>
-                <span class="inst-name">VISIBILITY</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-05</span><span class="inst-name">DAYLIGHT ARC</span></div>
+              <span class="inst-unit">LOCAL</span>
+            </div>
+            <div class="inst-body" id="sol-container"></div>
+          </div>
+
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label"><span class="inst-code">WX-08</span><span class="inst-name">HUMIDITY</span></div>
+              <span class="inst-unit">%RH</span>
+            </div>
+            <div class="inst-body" id="humidity-container"></div>
+          </div>
+
+          <!-- ROW 5: Visibility | Sea Temp (if available) -->
+          <div class="instrument" style="grid-column: span {% if datos.temp_agua %}2{% else %}4{% endif %}; height: 200px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label"><span class="inst-code">WX-07</span><span class="inst-name">VISIBILITY</span></div>
               <span class="inst-unit">km</span>
             </div>
             <div class="inst-body" id="visibilidad-container"></div>
           </div>
 
           {% if datos.temp_agua %}
-          <!-- WX-09 SEA TEMP -->
-          <div class="instrument" style="grid-column: span 1; height: 200px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
+          <div class="instrument" style="grid-column: span 2; height: 200px">
+            <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-09</span>
-                <span class="inst-name">SEA TEMP</span>
-              </div>
+              <div class="inst-label"><span class="inst-code">WX-09</span><span class="inst-name">SEA TEMP</span></div>
               <span class="inst-unit">&deg;C</span>
             </div>
             <div class="inst-body" id="temp-agua-container"></div>
