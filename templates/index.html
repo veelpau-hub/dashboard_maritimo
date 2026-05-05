@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#050a12">
   <meta name="description" content="Gyreo · Maritime weather intelligence dashboard">
   <link rel="manifest" href="/static/manifest.json">
-  <title>Gyreo · Maritime Weather Intelligence</title>
+  <title>Gyreo · Inteligencia Meteorológica Marítima</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,7 +56,7 @@
   <div class="hdr-l">
     <div class="wordmark">
       <img src="/static/logo.svg" alt="GYREO" style="height:18px;width:auto;display:block">
-      <span class="wm-tag" style="margin-top:5px;display:block">MARITIME WX INTEL &middot; v3.5</span>
+      <span class="wm-tag" style="margin-top:5px;display:block">INTEL MARÍTIMA &middot; v3.5</span>
     </div>
     <div class="hdr-divider"></div>
     <div class="loc" id="loc-block">
@@ -66,9 +66,9 @@
         <span class="loc-coords" id="loc-coords"></span>
       </div>
       <div class="loc-meta">
-        <span id="loc-station">STATION: &ndash;</span>
+        <span id="loc-station">ESTACIÓN: &ndash;</span>
         <span class="dot">&bull;</span>
-        <span id="loc-buoy">USE LOCATE TO SET POSITION</span>
+        <span id="loc-buoy">USA UBICAR PARA ESTABLECER POSICIÓN</span>
       </div>
     </div>
   </div>
@@ -76,28 +76,28 @@
   <div class="hdr-c">
     <div class="status-pill">
       <span class="pulse"></span>
-      <span>LIVE</span>
+      <span>EN VIVO</span>
     </div>
     <div class="status-meta">
       <div><span class="lbl">UTC</span><span class="val" id="clock-utc">--:--:--</span></div>
       <div><span class="lbl">LOCAL</span><span class="val" id="clock-local">--:--:--</span></div>
-      <div><span class="lbl">UPDATED</span><span class="val" id="last-updated">&ndash;</span></div>
+      <div><span class="lbl">ACTUALIZADO</span><span class="val" id="last-updated">&ndash;</span></div>
     </div>
   </div>
 
   <div class="hdr-r">
     <div class="hdr-search">
       <span class="srch-ico">&#8981;</span>
-      <input placeholder="Search station, vessel, MMSI&hellip;" id="search-input"/>
+      <input placeholder="Buscar estación, embarcación, MMSI&hellip;" id="search-input"/>
       <span class="srch-kbd">&#8984;K</span>
     </div>
     <div class="hdr-actions">
       <a href="https://ko-fi.com/veellab" target="_blank" class="hdr-btn" style="color:var(--alert);border-color:color-mix(in oklch,var(--alert) 30%,transparent);background:color-mix(in oklch,var(--alert) 8%,transparent);text-decoration:none" title="Apoya el proyecto">&#x2665;</a>
       <button class="hdr-btn" id="alerts-btn" onclick="switchNav('alerts')">
-        ALERTS<span class="badge" id="alerts-badge" style="display:none">!</span>
+        AVISOS<span class="badge" id="alerts-badge" style="display:none">!</span>
       </button>
-      <button class="hdr-btn" onclick="mostrarBriefing()">BRIEF</button>
-      <button class="hdr-btn primary" id="locate-btn" onclick="detectarUbicacion()">LOCATE</button>
+      <button class="hdr-btn" onclick="mostrarBriefing()">PARTE</button>
+      <button class="hdr-btn primary" id="locate-btn" onclick="detectarUbicacion()">UBICAR</button>
     </div>
   </div>
 </header>
@@ -107,7 +107,7 @@
   <span style="color:var(--accent);font-size:9px">&#9670;</span>
   <span id="mob-loc-name" style="color:var(--ink-1);font-weight:600;letter-spacing:0.08em">&ndash;</span>
   <span id="mob-loc-coords" style="color:var(--ink-3);font-size:9px;letter-spacing:0.06em"></span>
-  <button onclick="detectarUbicacion()" style="margin-left:auto;background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;letter-spacing:0.1em" id="mob-locate-btn">LOCATE</button>
+  <button onclick="detectarUbicacion()" style="margin-left:auto;background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;letter-spacing:0.1em" id="mob-locate-btn">UBICAR</button>
 </div>
 
 <!-- MAIN -->
@@ -117,25 +117,25 @@
   <aside class="sidenav" id="sidenav">
     <!-- 4 primary — always visible on mobile and desktop -->
     <button class="navbtn active" data-nav="overview" onclick="switchNav('overview')">
-      <span class="nav-ico">&#9680;</span><span class="nav-lbl">OVERVIEW</span>
+      <span class="nav-ico">&#9680;</span><span class="nav-lbl">RESUMEN</span>
     </button>
     <button class="navbtn" data-nav="wind" onclick="switchNav('wind')">
-      <span class="nav-ico">&#9672;</span><span class="nav-lbl">WIND</span>
+      <span class="nav-ico">&#9672;</span><span class="nav-lbl">VIENTO</span>
     </button>
     <button class="navbtn" data-nav="waves" onclick="switchNav('waves')">
-      <span class="nav-ico">&#8779;</span><span class="nav-lbl">WAVES</span>
+      <span class="nav-ico">&#8779;</span><span class="nav-lbl">OLEAJE</span>
     </button>
     <button class="navbtn" data-nav="chart" onclick="switchNav('chart')">
-      <span class="nav-ico">&#8862;</span><span class="nav-lbl">CHART</span>
+      <span class="nav-ico">&#8862;</span><span class="nav-lbl">CARTA</span>
     </button>
 
     <!-- Desktop-only secondary items -->
     <div class="nav-desktop-only">
       <button class="navbtn" data-nav="tides" onclick="switchNav('tides')">
-        <span class="nav-ico">&#9789;</span><span class="nav-lbl">TIDES</span>
+        <span class="nav-ico">&#9789;</span><span class="nav-lbl">MAREAS</span>
       </button>
       <button class="navbtn" data-nav="alerts" onclick="switchNav('alerts')">
-        <span class="nav-ico">&#9651;</span><span class="nav-lbl">ALERTS</span>
+        <span class="nav-ico">&#9651;</span><span class="nav-lbl">AVISOS</span>
       </button>
       {% if has_ais %}
       <button class="navbtn" data-nav="ais" onclick="switchNav('ais')">
@@ -144,13 +144,13 @@
       </button>
       {% endif %}
       <button class="navbtn" data-nav="corrientes" onclick="switchNav('corrientes')">
-        <span class="nav-ico">&#8651;</span><span class="nav-lbl">CURRENTS</span>
+        <span class="nav-ico">&#8651;</span><span class="nav-lbl">CORRIENTES</span>
       </button>
       <button class="navbtn" data-nav="routing" onclick="switchNav('routing')">
-        <span class="nav-ico">&#8982;</span><span class="nav-lbl">ROUTING</span>
+        <span class="nav-ico">&#8982;</span><span class="nav-lbl">RUTA</span>
       </button>
       <button class="navbtn" data-nav="pesca" onclick="switchNav('pesca')">
-        <span class="nav-ico">&#9674;</span><span class="nav-lbl">FISHING</span>
+        <span class="nav-ico">&#9674;</span><span class="nav-lbl">PESCA</span>
       </button>
     </div>
 
@@ -158,13 +158,13 @@
 
     <div class="nav-desktop-only">
       <button class="navbtn" data-nav="config" onclick="switchNav('config')">
-        <span class="nav-ico">&#9881;</span><span class="nav-lbl">CONFIG</span>
+        <span class="nav-ico">&#9881;</span><span class="nav-lbl">AJUSTES</span>
       </button>
     </div>
 
     <!-- Mobile-only MORE button -->
     <button class="navbtn nav-mobile-only" id="more-btn" onclick="toggleMoreSheet()">
-      <span class="nav-ico">&#8943;</span><span class="nav-lbl">MORE</span>
+      <span class="nav-ico">&#8943;</span><span class="nav-lbl">MÁS</span>
     </button>
   </aside>
 
@@ -172,15 +172,15 @@
   <div id="more-scrim" class="nav-sheet-scrim" style="display:none" onclick="closeMoreSheet()"></div>
   <div id="more-sheet" class="nav-sheet" style="display:none">
     <div class="nav-sheet-head">
-      <span>MORE</span>
+      <span>MÁS</span>
       <button onclick="closeMoreSheet()">&#x2715;</button>
     </div>
     <div class="nav-sheet-grid">
       <button class="nav-sheet-btn" onclick="switchNav('tides');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#9789;</span><span>TIDES</span>
+        <span class="nav-sheet-ico">&#9789;</span><span>MAREAS</span>
       </button>
       <button class="nav-sheet-btn" onclick="switchNav('alerts');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#9651;</span><span>ALERTS</span>
+        <span class="nav-sheet-ico">&#9651;</span><span>AVISOS</span>
       </button>
       {% if has_ais %}
       <button class="nav-sheet-btn" onclick="switchNav('ais');closeMoreSheet()">
@@ -188,16 +188,16 @@
       </button>
       {% endif %}
       <button class="nav-sheet-btn" onclick="switchNav('corrientes');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#8651;</span><span>CURRENTS</span>
+        <span class="nav-sheet-ico">&#8651;</span><span>CORRIENTES</span>
       </button>
       <button class="nav-sheet-btn" onclick="switchNav('routing');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#8982;</span><span>ROUTING</span>
+        <span class="nav-sheet-ico">&#8982;</span><span>RUTA</span>
       </button>
       <button class="nav-sheet-btn" onclick="switchNav('pesca');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#9674;</span><span>FISHING</span>
+        <span class="nav-sheet-ico">&#9674;</span><span>PESCA</span>
       </button>
       <button class="nav-sheet-btn" onclick="switchNav('config');closeMoreSheet()">
-        <span class="nav-sheet-ico">&#9881;</span><span>CONFIG</span>
+        <span class="nav-sheet-ico">&#9881;</span><span>AJUSTES</span>
       </button>
     </div>
   </div>
@@ -208,32 +208,32 @@
     <!-- CONDITIONS BANNER -->
     <div class="cond-banner" id="cond-banner">
       <div class="cond-item">
-        <span class="cond-k">CONDITIONS</span>
+        <span class="cond-k">CONDICIONES</span>
         <span class="cond-v ok" id="cond-status">&ndash;</span>
         <span class="cond-score" id="cond-score"><span class="dim">/100</span></span>
       </div>
       <div class="cond-item">
-        <span class="cond-k">SEA STATE</span>
+        <span class="cond-k">ESTADO MAR</span>
         <span class="cond-v" id="cond-sea">&ndash;</span>
         <span class="cond-sub" id="cond-sea-sub">&ndash;</span>
       </div>
       <div class="cond-item">
-        <span class="cond-k">VISIBILITY</span>
+        <span class="cond-k">VISIBILIDAD</span>
         <span class="cond-v" id="cond-vis">&ndash;</span>
         <span class="cond-sub" id="cond-vis-sub">&ndash;</span>
       </div>
       <div class="cond-item" id="cond-advisory-item">
-        <span class="cond-k">ADVISORY</span>
-        <span class="cond-v warn" id="cond-advisory">NO ACTIVE ADVISORIES</span>
+        <span class="cond-k">AVISO</span>
+        <span class="cond-v warn" id="cond-advisory">SIN AVISOS ACTIVOS</span>
         <span class="cond-sub" id="cond-advisory-sub">&ndash;</span>
       </div>
       <div class="cond-item">
-        <span class="cond-k">TIDAL</span>
+        <span class="cond-k">MAREAS</span>
         <span class="cond-v" id="cond-tidal">&ndash;</span>
         <span class="cond-sub" id="cond-tidal-sub">&ndash;</span>
       </div>
       <div class="cond-item">
-        <span class="cond-k">WIND</span>
+        <span class="cond-k">VIENTO</span>
         <span class="cond-v" id="cond-wind">{{ datos.viento_dir }} {{ datos.beaufort }}BFT</span>
         <span class="cond-sub" id="cond-wind-sub">{{ datos.viento_kmh }} km/h &middot; GST {{ datos.racha_kmh }}</span>
       </div>
@@ -251,8 +251,8 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-01</span><span class="inst-name">WIND DIRECTION</span></div>
-              <span class="inst-unit">&deg; TRUE</span>
+              <div class="inst-label"><span class="inst-code">WX-01</span><span class="inst-name">DIRECCIÓN VIENTO</span></div>
+              <span class="inst-unit">&deg; VERDAD</span>
             </div>
             <div class="inst-body" id="brujula-container"></div>
             <div class="inst-foot" id="wx01-foot">
@@ -264,8 +264,8 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-02</span><span class="inst-name">BEAUFORT FORCE</span></div>
-              <span class="inst-unit">SCALE</span>
+              <div class="inst-label"><span class="inst-code">WX-02</span><span class="inst-name">ESCALA BEAUFORT</span></div>
+              <span class="inst-unit">ESCALA</span>
             </div>
             <div class="inst-body" id="beaufort-container"></div>
           </div>
@@ -275,7 +275,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-06</span><span class="inst-name">TEMPERATURE</span></div>
+              <div class="inst-label"><span class="inst-code">WX-06</span><span class="inst-name">TEMPERATURA</span></div>
               <span class="inst-unit">&deg;C</span>
             </div>
             <div class="inst-body" id="termometro-container"></div>
@@ -285,7 +285,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-03</span><span class="inst-name">ATMOS PRESSURE</span></div>
+              <div class="inst-label"><span class="inst-code">WX-03</span><span class="inst-name">PRESIÓN ATMOS</span></div>
               <span class="inst-unit">hPa</span>
             </div>
             <div class="inst-body" id="presion-container"></div>
@@ -299,7 +299,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-04</span><span class="inst-name">WAVE HEIGHT</span></div>
+              <div class="inst-label"><span class="inst-code">WX-04</span><span class="inst-name">ALTURA OLAS</span></div>
               <span class="inst-unit">Hs &middot; 24H</span>
             </div>
             <div class="inst-body" id="grafico-olas" style="width:100%; overflow:hidden"></div>
@@ -315,7 +315,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-05</span><span class="inst-name">DAYLIGHT ARC</span></div>
+              <div class="inst-label"><span class="inst-code">WX-05</span><span class="inst-name">ARCO SOLAR</span></div>
               <span class="inst-unit">LOCAL</span>
             </div>
             <div class="inst-body" id="sol-container"></div>
@@ -325,7 +325,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-08</span><span class="inst-name">HUMIDITY</span></div>
+              <div class="inst-label"><span class="inst-code">WX-08</span><span class="inst-name">HUMEDAD</span></div>
               <span class="inst-unit">%RH</span>
             </div>
             <div class="inst-body" id="humidity-container"></div>
@@ -336,7 +336,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-07</span><span class="inst-name">VISIBILITY</span></div>
+              <div class="inst-label"><span class="inst-code">WX-07</span><span class="inst-name">VISIBILIDAD</span></div>
               <span class="inst-unit">km</span>
             </div>
             <div class="inst-body" id="visibilidad-container"></div>
@@ -347,7 +347,7 @@
             <div class="inst-corner inst-corner--tl"></div><div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div><div class="inst-corner inst-corner--br"></div>
             <div class="inst-head">
-              <div class="inst-label"><span class="inst-code">WX-09</span><span class="inst-name">SEA TEMP</span></div>
+              <div class="inst-label"><span class="inst-code">WX-09</span><span class="inst-name">TEMP MAR</span></div>
               <span class="inst-unit">&deg;C</span>
             </div>
             <div class="inst-body" id="temp-agua-container"></div>
@@ -359,11 +359,11 @@
         <!-- TIMELINE STRIP -->
         <div class="tl-strip">
           <div class="tl-head">
-            <span class="tl-title">12-HOUR FORECAST</span>
+            <span class="tl-title">PREVISIÓN 12H</span>
             <span class="tl-legend">
-              <i class="leg leg--good"></i>EXCELLENT
-              <i class="leg leg--fair"></i>ACCEPTABLE
-              <i class="leg leg--poor"></i>POOR
+              <i class="leg leg--good"></i>EXCELENTE
+              <i class="leg leg--fair"></i>ACEPTABLE
+              <i class="leg leg--poor"></i>ADVERSO
             </span>
           </div>
           <div class="tl-grid" id="tl-grid">
@@ -378,11 +378,11 @@
         <div class="chart-wrap">
           <div class="chart-header">
             <div class="chart-title">
-              <span class="chart-tag">CHART</span>
-              <span id="chart-title-text">MARITIME CHART</span>
+              <span class="chart-tag">CARTA</span>
+              <span id="chart-title-text">CARTA NÁUTICA</span>
             </div>
             <div class="chart-meta">
-              <span>SCALE 1:75 000</span>
+              <span>ESCALA 1:75 000</span>
               <span class="dot">&bull;</span>
               <span>WGS84</span>
               <span class="dot">&bull;</span>
@@ -396,7 +396,7 @@
               {% if has_ais %}
               <label class="layer-row" id="lyr-ais">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-ais" style="display:none" onchange="toggleMapLayer('ais')"> AIS TRAFFIC
+                <input type="checkbox" id="toggle-ais" style="display:none" onchange="toggleMapLayer('ais')"> TRÁFICO AIS
               </label>
               {% endif %}
               <label class="layer-row on" id="lyr-wp">
@@ -405,43 +405,43 @@
               </label>
               <label class="layer-row on" id="lyr-roz">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-roz" style="display:none" checked onchange="toggleMapLayer('roz')"> ROZ ZONE
+                <input type="checkbox" id="toggle-roz" style="display:none" checked onchange="toggleMapLayer('roz')"> ZONA ROZ
               </label>
               <label class="layer-row" id="lyr-alerts">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-alertas" style="display:none" onchange="toggleMapLayer('alertas')"> ALERTS
+                <input type="checkbox" id="toggle-alertas" style="display:none" onchange="toggleMapLayer('alertas')"> AVISOS
               </label>
               <label class="layer-row" id="lyr-wind">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-wind" style="display:none" onchange="toggleMapLayer('wind')"> WIND FIELD
+                <input type="checkbox" id="toggle-wind" style="display:none" onchange="toggleMapLayer('wind')"> CAMPO VIENTO
               </label>
               <label class="layer-row" id="lyr-sst">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-sst" style="display:none" onchange="toggleSSTOverlay()"> SST
+                <input type="checkbox" id="toggle-sst" style="display:none" onchange="toggleSSTOverlay()"> TSM
               </label>
               <label class="layer-row" id="lyr-sat">
                 <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-satellite" style="display:none" onchange="toggleMapStyle()"> SATELLITE
+                <input type="checkbox" id="toggle-satellite" style="display:none" onchange="toggleMapStyle()"> SATÉLITE
               </label>
               <div style="border-top: 1px solid var(--line); margin: 4px 0; padding-top: 4px;">
                 <label class="layer-row" id="lyr-routing">
                   <span class="lyr-chk"></span>
-                  <input type="checkbox" id="toggle-routing" style="display:none" onchange="toggleRoutingMode()"> ROUTING
+                  <input type="checkbox" id="toggle-routing" style="display:none" onchange="toggleRoutingMode()"> RUTA
                 </label>
               </div>
-              <button onclick="openWaypointPanel()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;letter-spacing:0.12em;padding:4px 8px;cursor:pointer;width:100%;margin-top:2px;text-align:left">+ ADD WP</button>
+              <button onclick="openWaypointPanel()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;letter-spacing:0.12em;padding:4px 8px;cursor:pointer;width:100%;margin-top:2px;text-align:left">+ AÑADIR WP</button>
               <div id="waypoint-add-panel" style="display:none;margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid var(--line)">
-                <input id="wp-nombre" placeholder="Name">
-                <input id="wp-desc" placeholder="Description (optional)">
-                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-4);margin-bottom:4px">Click map to select position</p>
-                <div id="wp-pos">NO POSITION</div>
-                <button onclick="saveWaypoint()" style="background:var(--accent);border:none;border-radius:2px;color:var(--bg-0);font-family:var(--mono-font);font-size:9px;padding:4px 10px;cursor:pointer;width:100%;font-weight:700">SAVE</button>
+                <input id="wp-nombre" placeholder="Nombre">
+                <input id="wp-desc" placeholder="Descripción (opcional)">
+                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-4);margin-bottom:4px">Toca el mapa para seleccionar posición</p>
+                <div id="wp-pos">SIN POSICIÓN</div>
+                <button onclick="saveWaypoint()" style="background:var(--accent);border:none;border-radius:2px;color:var(--bg-0);font-family:var(--mono-font);font-size:9px;padding:4px 10px;cursor:pointer;width:100%;font-weight:700">GUARDAR</button>
               </div>
               <div id="routing-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--line)">
-                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);margin-bottom:4px">CLICK 1 = ORIGIN &middot; CLICK 2 = DEST</p>
-                <div id="routing-status">NO ROUTE SELECTED</div>
-                <button onclick="calcularRuta()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px;letter-spacing:0.1em">CALCULATE ROUTE</button>
-                <button onclick="limpiarRuta()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:2px;color:var(--ink-3);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;letter-spacing:0.1em">CLEAR</button>
+                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);margin-bottom:4px">CLIC 1 = ORIGEN &middot; CLIC 2 = DESTINO</p>
+                <div id="routing-status">SIN RUTA SELECCIONADA</div>
+                <button onclick="calcularRuta()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px;letter-spacing:0.1em">CALCULAR RUTA</button>
+                <button onclick="limpiarRuta()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:2px;color:var(--ink-3);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;letter-spacing:0.1em">LIMPIAR</button>
               </div>
             </div>
             <div class="chart-zoom">
@@ -460,7 +460,7 @@
               <span class="lbl">CURSOR</span>
               <span class="val" id="cursor-lat">&ndash;</span>
               <span class="val" id="cursor-lon">&ndash;</span>
-              <span class="lbl">DEPTH</span>
+              <span class="lbl">PROF.</span>
               <span class="val" id="cursor-depth">&ndash;</span>
             </div>
             <div class="chart-attr">&copy; MAPBOX &middot; OPENSEAMAP &middot; NOAA</div>
@@ -475,11 +475,11 @@
 <!-- FOOTER -->
 <footer class="ftr">
   <div class="ftr-l">
-    <span class="ftr-k">DATA SOURCES</span>
+    <span class="ftr-k">FUENTES DE DATOS</span>
     <span>OPEN-METEO &middot; AEMET &middot; COPERNICUS &middot; OPENSEAMAP &middot; MAPBOX</span>
   </div>
   <div class="ftr-c">
-    <span class="ftr-k">FEED</span>
+    <span class="ftr-k">DATOS</span>
     <span class="ftr-tick"></span>
     <span>5MIN &middot; 28 PARAMS &middot; <span id="latency-display">&ndash;</span></span>
   </div>
@@ -491,7 +491,7 @@
 <!-- DASHBOARD PANEL (opened by sidenav tabs) -->
 <div class="panel hidden" id="panel-dashboard">
   <div class="panel-header">
-    <p class="panel-label" id="dash-tab-label">DASHBOARD</p>
+    <p class="panel-label" id="dash-tab-label">DATOS</p>
     <button class="close-btn" onclick="switchNav('overview')">&#x2715;</button>
   </div>
   <div class="dash-panel" id="dash-content"></div>
@@ -500,15 +500,15 @@
 <!-- SETTINGS PANEL -->
 <div class="panel hidden" id="panel-settings">
   <div class="panel-header">
-    <p class="panel-label">CONFIG</p>
+    <p class="panel-label">AJUSTES</p>
     <button class="close-btn" onclick="switchNav('overview')">&#x2715;</button>
   </div>
   <div class="dash-panel" style="padding:1rem">
 
     <div class="settings-section">
-      <h3>Temperature</h3>
+      <h3>Temperatura</h3>
       <div class="settings-row">
-        <span>Unit</span>
+        <span>Unidad</span>
         <div style="display:flex;gap:0.4rem">
           <button class="unit-btn active" id="btn-c" onclick="setTempUnit('c')">&deg;C</button>
           <button class="unit-btn" id="btn-f" onclick="setTempUnit('f')">&deg;F</button>
@@ -517,9 +517,9 @@
     </div>
 
     <div class="settings-section">
-      <h3>Wind</h3>
+      <h3>Viento</h3>
       <div class="settings-row">
-        <span>Unit</span>
+        <span>Unidad</span>
         <div style="display:flex;gap:0.4rem">
           <button class="unit-btn active" id="btn-kmh" onclick="setWindUnit('kmh')">km/h</button>
           <button class="unit-btn" id="btn-kn" onclick="setWindUnit('kn')">kt</button>
@@ -529,9 +529,9 @@
     </div>
 
     <div class="settings-section">
-      <h3>Language</h3>
+      <h3>Idioma</h3>
       <div class="settings-row">
-        <span>Interface</span>
+        <span>Interfaz</span>
         <div style="display:flex;gap:0.4rem">
           <button class="unit-btn active" id="btn-es" onclick="setLang('es')">ES</button>
           <button class="unit-btn" id="btn-en" onclick="setLang('en')">EN</button>
@@ -540,21 +540,21 @@
     </div>
 
     <div class="settings-section">
-      <h3>Alerts</h3>
+      <h3>Alertas</h3>
       <div class="settings-row">
-        <span>Max wave (m)</span>
+        <span>Ola máx. (m)</span>
         <input id="alert-ola-max" type="number" step="0.1" min="0.5" max="5" value="2.0"
           style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
           onchange="saveAlertSettings()">
       </div>
       <div class="settings-row">
-        <span>Max wind (km/h)</span>
+        <span>Viento máx. (km/h)</span>
         <input id="alert-viento-max" type="number" step="1" min="10" max="100" value="25"
           style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
           onchange="saveAlertSettings()">
       </div>
       <div class="settings-row">
-        <span>Min pressure (hPa)</span>
+        <span>Presión mín. (hPa)</span>
         <input id="alert-presion-min" type="number" step="1" min="960" max="1030" value="995"
           style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
           onchange="saveAlertSettings()">
@@ -562,29 +562,29 @@
     </div>
 
     <div class="settings-section">
-      <h3>Interface</h3>
+      <h3>Interfaz</h3>
       <div class="settings-row">
-        <span>Fullscreen</span>
-        <button onclick="toggleFullscreen()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:3px;color:var(--accent);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer" id="fullscreen-btn">Activate</button>
+        <span>Pantalla completa</span>
+        <button onclick="toggleFullscreen()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:3px;color:var(--accent);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer" id="fullscreen-btn">Activar</button>
       </div>
       <div class="settings-row">
-        <span>Share location</span>
-        <button onclick="compartirEstado()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-2);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer">Copy URL</button>
+        <span>Compartir ubicación</span>
+        <button onclick="compartirEstado()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-2);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer">Copiar URL</button>
       </div>
     </div>
 
     <div class="settings-section">
-      <h3>Widgets</h3>
+      <h3>Instrumentos</h3>
       <div class="config-grid" id="config-grid-settings"></div>
     </div>
 
     <div class="settings-section">
-      <h3>About</h3>
-      <div class="settings-row"><span>Version</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">3.5.0</span></div>
-      <div class="settings-row"><span>Climate</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">Open-Meteo</span></div>
-      <div class="settings-row"><span>Alerts</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">AEMET OpenData</span></div>
+      <h3>Acerca de</h3>
+      <div class="settings-row"><span>Versión</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">3.5.0</span></div>
+      <div class="settings-row"><span>Clima</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">Open-Meteo</span></div>
+      <div class="settings-row"><span>Alertas</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">AEMET OpenData</span></div>
       {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">AISstream.io</span></div>{% endif %}
-      <div class="settings-row"><span>Support</span><a href="https://ko-fi.com/veellab" target="_blank" style="color:var(--alert);font-family:var(--mono-font);font-size:10px">Ko-fi &#x2665;</a></div>
+      <div class="settings-row"><span>Soporte</span><a href="https://ko-fi.com/veellab" target="_blank" style="color:var(--alert);font-family:var(--mono-font);font-size:10px">Ko-fi &#x2665;</a></div>
     </div>
 
   </div>
@@ -594,8 +594,8 @@
 <div id="briefing-modal" class="modal-overlay" style="display:none">
   <div style="background:var(--bg-1);border:1px solid var(--line-2);border-radius:4px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
     <button onclick="document.getElementById('briefing-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:var(--ink-3);font-size:1.2rem;cursor:pointer">&#x2715;</button>
-    <p style="font-family:var(--mono-font);color:var(--accent);font-size:10px;letter-spacing:0.2em;margin-bottom:0.75rem">DAILY WEATHER BRIEF</p>
-    <pre id="briefing-text" style="font-family:var(--mono-font);font-size:11px;color:var(--ink-2);white-space:pre-wrap;line-height:1.6">Loading...</pre>
+    <p style="font-family:var(--mono-font);color:var(--accent);font-size:10px;letter-spacing:0.2em;margin-bottom:0.75rem">PARTE METEOROLÓGICO DIARIO</p>
+    <pre id="briefing-text" style="font-family:var(--mono-font);font-size:11px;color:var(--ink-2);white-space:pre-wrap;line-height:1.6">Cargando...</pre>
   </div>
 </div>
 
@@ -758,14 +758,14 @@
 
   // ── Conditions banner update ──
   function updateConditionsBanner(datos) {
-    const seaNames = ['CALM','RIPPLED','WAVELETS','SLIGHT','MODERATE','ROUGH','VERY ROUGH','HIGH','VERY HIGH','PHENOMENAL','PHENOMENAL','PHENOMENAL','PHENOMENAL'];
+    const seaNames = ['CALMA','RIZADO','ONDULACIÓN','MAREJADILLA','MAREJADA','FUERTE MAREJADA','TEMPORAL','TEMPORAL FUERTE','TEMPORAL DURO','TEMPORAL HURACANADO','TEMPORAL HURACANADO','TEMPORAL HURACANADO','TEMPORAL HURACANADO'];
     const seaEl = document.getElementById('cond-sea');
     const seaSubEl = document.getElementById('cond-sea-sub');
     if (seaEl) seaEl.textContent = seaNames[datos.beaufort] || '–';
     if (seaSubEl) seaSubEl.textContent = 'BFT ' + datos.beaufort;
 
     const visKm = datos.visibilidad;
-    const visLabel = visKm > 10 ? 'EXCELLENT' : visKm > 4 ? 'GOOD' : visKm > 1 ? 'MODERATE' : 'POOR';
+    const visLabel = visKm > 10 ? 'EXCELENTE' : visKm > 4 ? 'BUENA' : visKm > 1 ? 'MODERADA' : 'ESCASA';
     const visEl = document.getElementById('cond-vis');
     const visSubEl = document.getElementById('cond-vis-sub');
     if (visEl) visEl.textContent = visLabel;
@@ -990,7 +990,7 @@
         const sub = document.getElementById('cond-tidal-sub');
         if (!el) return;
         const delta = d.delta_m != null ? (d.delta_m >= 0 ? '+' : '') + parseFloat(d.delta_m).toFixed(2) + 'M' : '–';
-        const tipo = d.proximo_tipo === 'pleamar' ? 'HIGH' : d.proximo_tipo === 'bajamar' ? 'LOW' : '–';
+        const tipo = d.proximo_tipo === 'pleamar' ? 'PLEAMAR' : d.proximo_tipo === 'bajamar' ? 'BAJAMAR' : '–';
         el.textContent = delta;
         if (sub) sub.textContent = tipo + (d.proximo_time ? ' ' + d.proximo_time : '') + (d.proximo_height != null ? ' · ' + parseFloat(d.proximo_height).toFixed(1) + 'm' : '');
       })
@@ -1054,7 +1054,7 @@
     if (upd) {
       setInterval(() => {
         const s = Math.floor((Date.now() - (window._lastUpdate || Date.now())) / 1000);
-        upd.textContent = s < 60 ? s + 's ago' : Math.floor(s / 60) + 'm ago';
+        upd.textContent = s < 60 ? 'hace ' + s + 's' : 'hace ' + Math.floor(s / 60) + 'm';
       }, 5000);
       window._lastUpdate = Date.now();
     }
@@ -1086,9 +1086,9 @@ window.switchTab = function(tab) {
     const chartTitle = document.getElementById('chart-title-text');
     if (locName)   locName.textContent   = name;
     if (locCoords) locCoords.textContent = coordsText;
-    if (locStation) locStation.textContent = 'STATION: ' + name.split(' ·')[0];
+    if (locStation) locStation.textContent = 'ESTACIÓN: ' + name.split(' ·')[0];
     if (locBuoy)   locBuoy.textContent   = 'COORDS ' + coordsText;
-    if (chartTitle) chartTitle.textContent = name.split(' ·')[0] + ' · APPROACH';
+    if (chartTitle) chartTitle.textContent = name.split(' ·')[0] + ' · APROXIMACIÓN';
 
     // Mobile bar
     const bar = document.getElementById('mob-loc-bar');
@@ -1146,7 +1146,7 @@ window.switchTab = function(tab) {
   // Loading feedback on click
   ['locate-btn','mob-locate-btn'].forEach(id => {
     const btn = document.getElementById(id);
-    if (btn) btn.addEventListener('click', () => { btn.textContent = 'LOCATING…'; }, { capture: true });
+    if (btn) btn.addEventListener('click', () => { btn.textContent = 'LOCALIZANDO…'; }, { capture: true });
   });
 })();
 
