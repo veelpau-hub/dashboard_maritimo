@@ -894,7 +894,7 @@ function renderPesca(data, el) {
     }).join('');
 
     el.innerHTML = `
-        <p class="dash-section-title">Condiciones de pesca — Bahía de Cádiz</p>
+        <p class="dash-section-title">Condiciones de pesca — ${document.getElementById('loc-name')?.textContent?.split(' ·')[0] || 'Zona local'}</p>
 
         <div class="dash-grid" style="margin-bottom:1rem">
             <div class="dash-card" style="text-align:center">
@@ -976,7 +976,7 @@ function buildZonasPescaHtml(zonas) {
             <div style="font-size:0.65rem;color:rgba(255,255,255,0.5)">🎣 ${(z.tecnicas||[]).map(t=>esc(t)).join(' · ')}</div>
             <div style="font-size:0.65rem;color:#22c55e;margin-top:0.2rem">${(z.especies||[]).map(s=>esc(s)).join(' · ')}</div>
         </div>`).join('');
-    return `<p class="dash-section-title" style="margin-top:1rem">Zonas de pesca — Bahía de Cádiz</p>
+    return `<p class="dash-section-title" style="margin-top:1rem">Zonas de pesca — ${document.getElementById('loc-name')?.textContent?.split(' ·')[0] || 'Zona local'}</p>
             <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${cards}</div>`;
 }
 

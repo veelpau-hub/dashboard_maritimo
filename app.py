@@ -1117,6 +1117,37 @@ ZONAS_PESCA_ROTA = [
     },
 ]
 
+
+def _zonas_pesca_genericas(lat, lon):
+    """Generate generic fishing zones around provided coordinates."""
+    return [
+        {
+            'nombre': 'Zona costera local',
+            'lat': round(lat, 3), 'lon': round(lon, 3),
+            'profundidad_m': 10,
+            'fondo': 'Mixto',
+            'tecnicas': ['Fondo con plomada', 'Surfcasting'],
+            'especies': ['Dorada', 'Lubina', 'Corvina'],
+        },
+        {
+            'nombre': 'Fondos someros',
+            'lat': round(lat + 0.02, 3), 'lon': round(lon - 0.02, 3),
+            'profundidad_m': 20,
+            'fondo': 'Arena/roca',
+            'tecnicas': ['Jigging', 'Pesca de fondo'],
+            'especies': ['Sargo', 'Dentón', 'Pargo'],
+        },
+        {
+            'nombre': 'Aguas abiertas',
+            'lat': round(lat - 0.05, 3), 'lon': round(lon - 0.08, 3),
+            'profundidad_m': 50,
+            'fondo': 'Alta mar',
+            'tecnicas': ['Curricán', 'Jigging profundo'],
+            'especies': ['Atún', 'Pez espada', 'Bonito'],
+        },
+    ]
+
+
 def _solunar_times(lat=36.637, lon=-6.362, date=None):
     """Calculate solunar major/minor times for a given location and date.
     Returns list of {time, type, duration_min} dicts.
@@ -1314,7 +1345,7 @@ def fetch_pesca(lat=36.62, lon=-6.35):
     temps_agua = [t for t in (oleaje.get('temp_agua') or []) if t is not None][:7*24:3]
 
     # Solunar times
-    solunar = _solunar_times()
+    solunar = _solunar_times(lat=lat, lon=lon)
 
     # Barometric pressure advice
     presion_trend = get_presion_trend()
@@ -1408,7 +1439,7 @@ def fetch_pesca(lat=36.62, lon=-6.35):
         'profundidad_color': profundidad_color,
         'reasons_ok': reasons_ok,
         'reasons_bad': reasons_bad,
-        'zonas_pesca': ZONAS_PESCA_ROTA,
+        'zonas_pesca': ZONAS_PESCA_ROTA if (abs(lat - 36.62) <= 0.01 and abs(lon - (-6.35)) <= 0.01) else _zonas_pesca_genericas(lat, lon),
         'consejo': consejo,
         'pesca_modo': pesca_modo,
         'modo_text': modo_text,
