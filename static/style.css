@@ -969,6 +969,7 @@ body::before {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
+  .grid-instruments .instrument:nth-child(4),
   .grid-instruments .instrument {
     grid-column: span 1 !important;
     height: auto;
@@ -976,7 +977,7 @@ body::before {
     padding: 10px 12px 12px;
   }
   /* full-width items: wave chart, sun, visibility */
-  .grid-instruments .instrument:nth-child(4),
+  
   .grid-instruments .instrument:nth-child(5),
   .grid-instruments .instrument:nth-child(8) {
     grid-column: 1 / -1 !important;
