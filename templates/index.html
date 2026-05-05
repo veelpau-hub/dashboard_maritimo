@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#050a12">
-  <meta name="description" content="Gyreo · Maritime weather intelligence dashboard — Rota, ES">
+  <meta name="description" content="Gyreo · Maritime weather intelligence dashboard">
   <link rel="manifest" href="/static/manifest.json">
   <title>Gyreo · Maritime Weather Intelligence</title>
 
@@ -62,13 +62,13 @@
     <div class="loc" id="loc-block">
       <div class="loc-row">
         <span class="loc-pin">&#9670;</span>
-        <span class="loc-name" id="loc-name">ROTA &middot; ES</span>
-        <span class="loc-coords" id="loc-coords">36&deg;38&prime;12&Prime;N &nbsp; 006&deg;21&prime;44&Prime;W</span>
+        <span class="loc-name" id="loc-name">&ndash;</span>
+        <span class="loc-coords" id="loc-coords"></span>
       </div>
       <div class="loc-meta">
-        <span id="loc-station">STATION: ES-ROT-01</span>
+        <span id="loc-station">STATION: &ndash;</span>
         <span class="dot">&bull;</span>
-        <span id="loc-buoy">BUOY: SIMAR-5040040</span>
+        <span id="loc-buoy">USE LOCATE TO SET POSITION</span>
       </div>
     </div>
   </div>
@@ -101,6 +101,14 @@
     </div>
   </div>
 </header>
+
+<!-- MOBILE LOCATION BAR — only visible on mobile -->
+<div id="mob-loc-bar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--bg-1);border-bottom:1px solid var(--line);font-family:var(--mono-font);font-size:10px;color:var(--ink-2)">
+  <span style="color:var(--accent);font-size:9px">&#9670;</span>
+  <span id="mob-loc-name" style="color:var(--ink-1);font-weight:600;letter-spacing:0.08em">&ndash;</span>
+  <span id="mob-loc-coords" style="color:var(--ink-3);font-size:9px;letter-spacing:0.06em"></span>
+  <button onclick="detectarUbicacion()" style="margin-left:auto;background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;letter-spacing:0.1em" id="mob-locate-btn">LOCATE</button>
+</div>
 
 <!-- MAIN -->
 <div class="main">
@@ -371,7 +379,7 @@
           <div class="chart-header">
             <div class="chart-title">
               <span class="chart-tag">CHART</span>
-              <span id="chart-title-text">ATLANTIC &middot; ROTA APPROACH</span>
+              <span id="chart-title-text">MARITIME CHART</span>
             </div>
             <div class="chart-meta">
               <span>SCALE 1:75 000</span>
@@ -1065,34 +1073,81 @@ window.switchTab = function(tab) {
   switchNav(tabMap[tab] || tab);
 };
 
-// Bridge geo.js location detection to Gyreo header elements
+// ── Location persistence + header/mobile bridge ──────────────────────────────
 (function() {
-  const locBtn = document.getElementById('locate-btn');
-  const titleStub = document.getElementById('panel-title');
-  const coordsStub = document.getElementById('panel-coords');
-  const locName = document.getElementById('loc-name');
-  const locCoords = document.getElementById('loc-coords');
-  if (!titleStub || !locName) return;
+  const LOC_KEY = 'gyreo_location';
 
-  // Watch panel-title stub — geo.js writes the location name there
+  function applyLocation(name, coordsText, lat, lon) {
+    // Header desktop
+    const locName   = document.getElementById('loc-name');
+    const locCoords = document.getElementById('loc-coords');
+    const locStation = document.getElementById('loc-station');
+    const locBuoy   = document.getElementById('loc-buoy');
+    const chartTitle = document.getElementById('chart-title-text');
+    if (locName)   locName.textContent   = name;
+    if (locCoords) locCoords.textContent = coordsText;
+    if (locStation) locStation.textContent = 'STATION: ' + name.split(' ·')[0];
+    if (locBuoy)   locBuoy.textContent   = 'COORDS ' + coordsText;
+    if (chartTitle) chartTitle.textContent = name.split(' ·')[0] + ' · APPROACH';
+
+    // Mobile bar
+    const bar = document.getElementById('mob-loc-bar');
+    const mobName = document.getElementById('mob-loc-name');
+    const mobCoords = document.getElementById('mob-loc-coords');
+    if (bar)      bar.style.display = 'flex';
+    if (mobName)  mobName.textContent  = name;
+    if (mobCoords) mobCoords.textContent = coordsText;
+
+    // Locate buttons
+    ['locate-btn','mob-locate-btn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.textContent = name.split(' ·')[0];
+    });
+
+    // Store geoCoords for dashboard tabs
+    if (lat != null && lon != null) window.geoCoords = { lat, lon };
+  }
+
+  // Restore saved location from localStorage on load
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOC_KEY) || 'null');
+    if (saved && saved.lat && saved.lon) {
+      applyLocation(saved.name || '–', saved.coords || '', saved.lat, saved.lon);
+    } else {
+      // No saved location — show mobile bar with just LOCATE prompt
+      const bar = document.getElementById('mob-loc-bar');
+      if (bar) bar.style.display = 'flex';
+    }
+  } catch(e) {}
+
+  // Watch panel-title stub — geo.js writes the location name there after detection
+  const titleStub  = document.getElementById('panel-title');
+  const coordsStub = document.getElementById('panel-coords');
+  if (!titleStub) return;
+
   const obs = new MutationObserver(() => {
-    if (titleStub.textContent) {
-      locName.textContent = titleStub.textContent + ' · ES';
-      if (locBtn) locBtn.textContent = 'LOCATED';
-    }
-    if (coordsStub && coordsStub.textContent) {
-      locCoords.textContent = coordsStub.textContent;
-    }
+    const name      = titleStub.textContent ? titleStub.textContent + ' · ES' : null;
+    const coordsTxt = coordsStub ? coordsStub.textContent : '';
+    if (!name) return;
+
+    const lat = window.geoCoords?.lat;
+    const lon = window.geoCoords?.lon;
+    applyLocation(name, coordsTxt, lat, lon);
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(LOC_KEY, JSON.stringify({
+        name, coords: coordsTxt, lat, lon, ts: Date.now()
+      }));
+    } catch(e) {}
   });
   obs.observe(titleStub, { characterData: true, childList: true, subtree: true });
 
-  // Show loading state immediately on click
-  if (locBtn) {
-    const origOnclick = locBtn.getAttribute('onclick');
-    locBtn.addEventListener('click', function() {
-      locBtn.textContent = 'LOCATING…';
-    }, { capture: true });
-  }
+  // Loading feedback on click
+  ['locate-btn','mob-locate-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => { btn.textContent = 'LOCATING…'; }, { capture: true });
+  });
 })();
 
 if ('serviceWorker' in navigator) {

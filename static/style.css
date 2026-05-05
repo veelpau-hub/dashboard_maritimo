@@ -1140,3 +1140,12 @@ body::before {
 
 /* panel class for hidden panel-dashboard / panel-settings */
 .panel.hidden { display: none !important; }
+
+/* Mobile location bar — always visible on mobile, hidden on desktop */
+#mob-loc-bar { display: none; }
+@media (max-width: 720px) {
+  #mob-loc-bar { display: flex !important; }
+}
+@media (min-width: 721px) {
+  #mob-loc-bar { display: none !important; }
+}

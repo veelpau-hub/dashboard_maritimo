@@ -1179,12 +1179,20 @@ def fetch_pesca(lat=36.62, lon=-6.35):
             r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
                 'latitude': lat, 'longitude': lon,
                 'current': 'wind_speed_10m,surface_pressure,visibility',
-                'timezone': 'auto'
+                'daily': 'sunrise,sunset',
+                'timezone': 'auto', 'forecast_days': 1
             }, verify=False, timeout=8).json()
             wave_h = r_mar.get('current', {}).get('wave_height') or 0
             wind_kmh = r_met.get('current', {}).get('wind_speed_10m') or 0
             visibility_km = round((r_met.get('current', {}).get('visibility') or 10000) / 1000, 1)
             pressure = r_met.get('current', {}).get('surface_pressure') or 1013
+            _daily = r_met.get('daily', {})
+            sunrise_raw = (_daily.get('sunrise') or [''])[0]
+            sunset_raw  = (_daily.get('sunset')  or [''])[0]
+            datos = {
+                'sunrise': sunrise_raw[11:] if len(sunrise_raw) > 10 else '07:00',
+                'sunset':  sunset_raw[11:]  if len(sunset_raw)  > 10 else '20:30',
+            }
         except Exception:
             datos = get_datos_maritimos()
             wave_h = datos.get('altura_max', 0)
