@@ -453,7 +453,7 @@ def get_datos_maritimos():
     params_met = {
         'latitude': 36.62,
         'longitude': -6.35,
-        'current': 'temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility,weather_code',
+        'current': 'temperature_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility,weather_code,relative_humidity_2m',
         'hourly': 'temperature_2m,wind_speed_10m',
         'daily': 'sunrise,sunset,wave_height_max',
         'timezone': 'Europe/Madrid',
@@ -520,6 +520,7 @@ def get_datos_maritimos():
         'sunset': daily['sunset'][0][11:],
         'beaufort': bf,
         'temp_agua': temp_agua,
+        'humidity': round(current.get('relative_humidity_2m') or 0),
         'prediccion': prediccion,
     }
     # Track pressure history for trend

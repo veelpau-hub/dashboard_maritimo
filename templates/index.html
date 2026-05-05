@@ -49,24 +49,14 @@
   </svg>
 </div>
 
-<a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner">&#x2665; Apoya</a>
+<a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner" style="display:none">&#x2665;</a>
 
 <!-- HEADER -->
 <header class="hdr" id="hdr">
   <div class="hdr-l">
     <div class="wordmark">
-      <svg viewBox="0 0 36 36" class="wm-glyph">
-        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="1"/>
-        <circle cx="18" cy="18" r="10" fill="none" stroke="var(--accent)" stroke-width="0.5"/>
-        <line x1="18" y1="2" x2="18" y2="34" stroke="var(--accent)" stroke-width="0.5"/>
-        <line x1="2" y1="18" x2="34" y2="18" stroke="var(--accent)" stroke-width="0.5"/>
-        <polygon points="18,5 21,18 18,15 15,18" fill="var(--accent)"/>
-        <polygon points="18,31 15,18 18,21 21,18" fill="var(--accent)" opacity="0.5"/>
-      </svg>
-      <div class="wm-text">
-        <span class="wm-name">GYREO</span>
-        <span class="wm-tag">MARITIME WX INTEL &middot; v3.5</span>
-      </div>
+      <img src="/static/logo.svg" alt="GYREO" style="height:30px;width:auto;display:block;filter:brightness(1)">
+      <span class="wm-tag" style="margin-top:5px;display:block">MARITIME WX INTEL &middot; v3.5</span>
     </div>
     <div class="hdr-divider"></div>
     <div class="loc" id="loc-block">
@@ -102,11 +92,12 @@
       <span class="srch-kbd">&#8984;K</span>
     </div>
     <div class="hdr-actions">
+      <a href="https://ko-fi.com/veellab" target="_blank" class="hdr-btn" style="color:var(--alert);border-color:color-mix(in oklch,var(--alert) 30%,transparent);background:color-mix(in oklch,var(--alert) 8%,transparent);text-decoration:none" title="Apoya el proyecto">&#x2665;</a>
       <button class="hdr-btn" id="alerts-btn" onclick="switchNav('alerts')">
         ALERTS<span class="badge" id="alerts-badge" style="display:none">!</span>
       </button>
-      <button class="hdr-btn" onclick="switchNav('routing')">REPORTS</button>
-      <button class="hdr-btn primary" onclick="detectarUbicacion()">LOCATE</button>
+      <button class="hdr-btn" onclick="mostrarBriefing()">BRIEF</button>
+      <button class="hdr-btn primary" id="locate-btn" onclick="detectarUbicacion()">LOCATE</button>
     </div>
   </div>
 </header>
@@ -302,8 +293,24 @@
             </div>
           </div>
 
-          <!-- WX-06 TEMPERATURE -->
+          <!-- WX-08 HUMIDITY — fila 1, posición 4 -->
           <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-08</span>
+                <span class="inst-name">HUMIDITY</span>
+              </div>
+              <span class="inst-unit">%RH</span>
+            </div>
+            <div class="inst-body" id="humidity-container"></div>
+          </div>
+
+          <!-- WX-06 TEMPERATURE — span 2, fila 2 -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
             <div class="inst-corner inst-corner--tl"></div>
             <div class="inst-corner inst-corner--tr"></div>
             <div class="inst-corner inst-corner--bl"></div>
@@ -318,7 +325,23 @@
             <div class="inst-body" id="termometro-container"></div>
           </div>
 
-          <!-- WX-04 WAVE HEIGHT — span 4 -->
+          <!-- WX-05 DAYLIGHT ARC — span 2, fila 2 -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-05</span>
+                <span class="inst-name">DAYLIGHT ARC</span>
+              </div>
+              <span class="inst-unit">LOCAL</span>
+            </div>
+            <div class="inst-body" id="sol-container"></div>
+          </div>
+
+          <!-- WX-04 WAVE HEIGHT — span 4, fila 3 -->
           <div class="instrument" style="grid-column: span 4; height: 220px">
             <div class="inst-corner inst-corner--tl"></div>
             <div class="inst-corner inst-corner--tr"></div>
@@ -337,38 +360,6 @@
               MIN <span id="wx04-min">{{ datos.altura_min }}</span>m &middot;
               AVG <span id="wx04-avg">{{ datos.altura_media }}</span>m
             </div>
-          </div>
-
-          <!-- WX-05 DAYLIGHT ARC — span 2 -->
-          <div class="instrument" style="grid-column: span 2; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
-            <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-05</span>
-                <span class="inst-name">DAYLIGHT ARC</span>
-              </div>
-              <span class="inst-unit">LOCAL</span>
-            </div>
-            <div class="inst-body" id="sol-container"></div>
-          </div>
-
-          <!-- WX-08 HUMIDITY -->
-          <div class="instrument" style="grid-column: span 1; height: 240px">
-            <div class="inst-corner inst-corner--tl"></div>
-            <div class="inst-corner inst-corner--tr"></div>
-            <div class="inst-corner inst-corner--bl"></div>
-            <div class="inst-corner inst-corner--br"></div>
-            <div class="inst-head">
-              <div class="inst-label">
-                <span class="inst-code">WX-08</span>
-                <span class="inst-name">HUMIDITY</span>
-              </div>
-              <span class="inst-unit">%RH</span>
-            </div>
-            <div class="inst-body" id="humidity-container"></div>
           </div>
 
           <!-- WX-07 VISIBILITY -->
@@ -723,6 +714,8 @@
     if (nav === 'overview') {
       if (layoutMain) layoutMain.style.display = '';
       if (condBanner) condBanner.style.display = '';
+      window.scrollTo(0, 0);
+      setTimeout(() => { if (window.mapa) window.mapa.resize(); }, 80);
     } else if (nav === 'config') {
       if (layoutMain) layoutMain.style.display = 'none';
       if (settingsPanel) {
@@ -1030,9 +1023,45 @@
     });
   }
 
+  // ── Conditions banner: Tidal ──
+  function loadCondTidal() {
+    fetch('/api/mareas_estado')
+      .then(r => r.json())
+      .then(d => {
+        const el = document.getElementById('cond-tidal');
+        const sub = document.getElementById('cond-tidal-sub');
+        if (!el) return;
+        const delta = d.delta_m != null ? (d.delta_m >= 0 ? '+' : '') + parseFloat(d.delta_m).toFixed(2) + 'M' : '–';
+        const tipo = d.proximo_tipo === 'pleamar' ? 'HIGH' : d.proximo_tipo === 'bajamar' ? 'LOW' : '–';
+        el.textContent = delta;
+        if (sub) sub.textContent = tipo + (d.proximo_time ? ' ' + d.proximo_time : '') + (d.proximo_height != null ? ' · ' + parseFloat(d.proximo_height).toFixed(1) + 'm' : '');
+      })
+      .catch(() => {});
+  }
+
+  // ── Conditions banner: Score / status ──
+  function loadCondScore() {
+    fetch('/api/score_dia')
+      .then(r => r.json())
+      .then(d => {
+        const scoreEl = document.getElementById('cond-score');
+        const statusEl = document.getElementById('cond-status');
+        if (scoreEl) scoreEl.innerHTML = (d.score || '–') + '<span class="dim">/100</span>';
+        if (statusEl) {
+          statusEl.textContent = d.label || 'OPERABLE';
+          statusEl.className = 'cond-v' + (d.score >= 75 ? ' ok' : d.score >= 40 ? '' : ' warn');
+        }
+      })
+      .catch(() => {});
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     buildTimelineStrip();
     loadHumidityWidget();
+    loadCondTidal();
+    loadCondScore();
+    setInterval(loadCondTidal, 300000);
+    setInterval(loadCondScore, 300000);
     // Update conditions banner with initial data
     updateConditionsBanner({
       beaufort: beaufortValor,
@@ -1088,7 +1117,7 @@ window.switchTab = function(tab) {
 
 // Bridge geo.js location detection to Gyreo header elements
 (function() {
-  const locBtn = document.querySelector('[onclick="detectarUbicacion()"]');
+  const locBtn = document.getElementById('locate-btn');
   const titleStub = document.getElementById('panel-title');
   const coordsStub = document.getElementById('panel-coords');
   const locName = document.getElementById('loc-name');
