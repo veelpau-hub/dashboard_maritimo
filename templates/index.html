@@ -1,424 +1,974 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
-    <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="UTF-8">
-    <meta name="theme-color" content="#0a0f1e">
-    <meta name="description" content="Dashboard meteorológico y marítimo para la Bahía de Cádiz — Rota">
-    <link rel="manifest" href="/static/manifest.json">
-    <title>Dashboard Marítimo — Rota</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050a12">
+  <meta name="description" content="Gyreo · Maritime weather intelligence dashboard — Rota, ES">
+  <link rel="manifest" href="/static/manifest.json">
+  <title>Gyreo · Maritime Weather Intelligence</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Gyreo CSS -->
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<!-- HAMBURGER BUTTON (mobile only) -->
-<button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menú">
-    <i class="fa-solid fa-bars"></i>
-</button>
-<!-- Overlay for sidebar on mobile -->
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-
-<a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner">♥ Apoya el proyecto</a>
-
-<!-- SIDEBAR PRINCIPAL -->
-<div class="sidebar" id="sidebar">
-    <button class="sidebar-btn active" data-label="Overview" onclick="switchTab('overview')">
-        <i class="fa-solid fa-ship"></i>
-    </button>
-    <button class="sidebar-btn" data-label="Dashboard" onclick="switchTab('dashboard')">
-        <i class="fa-solid fa-chart-bar"></i>
-    </button>
-    <button class="sidebar-btn" data-label="Mapa" onclick="switchTab('mapa')">
-        <i class="fa-solid fa-map"></i>
-    </button>
-    <button class="sidebar-btn" data-label="Ajustes" onclick="switchTab('settings')">
-        <i class="fa-solid fa-gear"></i>
-    </button>
+<!-- Compass rose watermark -->
+<div class="watermark" aria-hidden="true">
+  <svg viewBox="0 0 800 800">
+    <g transform="translate(400 400)">
+      <circle r="380" fill="none" stroke="currentColor" stroke-width="0.5"/>
+      <circle r="300" fill="none" stroke="currentColor" stroke-width="0.3"/>
+      <circle r="220" fill="none" stroke="currentColor" stroke-width="0.3"/>
+      <circle r="140" fill="none" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="0" y1="-380" x2="0" y2="380" stroke="currentColor" stroke-width="0.6"/>
+      <line x1="-380" y1="0" x2="380" y2="0" stroke="currentColor" stroke-width="0.6"/>
+      <line x1="-268.7" y1="-268.7" x2="268.7" y2="268.7" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="268.7" y1="-268.7" x2="-268.7" y2="268.7" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="-144" y1="-363.5" x2="144" y2="363.5" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="144" y1="-363.5" x2="-144" y2="363.5" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="-363.5" y1="-144" x2="363.5" y2="144" stroke="currentColor" stroke-width="0.3"/>
+      <line x1="363.5" y1="-144" x2="-363.5" y2="144" stroke="currentColor" stroke-width="0.3"/>
+      <polygon points="0,-380 30,0 0,-30 -30,0" fill="currentColor" opacity="0.4"/>
+      <polygon points="0,380 -30,0 0,30 30,0" fill="currentColor" opacity="0.4"/>
+      <polygon points="-380,0 0,-30 30,0 0,30" fill="currentColor" opacity="0.2"/>
+      <polygon points="380,0 0,30 -30,0 0,-30" fill="currentColor" opacity="0.2"/>
+    </g>
+  </svg>
 </div>
 
-<!-- SUBMENÚ DASHBOARD -->
-<div class="submenu" id="submenu">
-    <button class="submenu-btn" onclick="switchDashTab('hoy')">
-        <i class="fa-solid fa-calendar-day"></i><span class="submenu-label"> Hoy</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('meteo')">
-        <i class="fa-solid fa-cloud-sun"></i><span class="submenu-label"> Meteorología</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('oleaje')">
-        <i class="fa-solid fa-water"></i><span class="submenu-label"> Oleaje</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('mareas')">
-        <i class="fa-solid fa-moon"></i><span class="submenu-label"> Mareas</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('ais')">
-        <i class="fa-solid fa-ship"></i><span class="submenu-label"> AIS</span>
-        {% if has_ais %}<span id="ais-status-indicator" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;margin-left:4px;vertical-align:middle" title="AIS status"></span>{% endif %}
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('alertas')">
-        <i class="fa-solid fa-triangle-exclamation"></i><span class="submenu-label"> Alertas</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('prediccion')">
-        <i class="fa-solid fa-calendar-days"></i><span class="submenu-label"> Predicción</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('calidad')">
-        <i class="fa-solid fa-wind"></i><span class="submenu-label"> Calidad aire</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('vigilancia')">
-        <i class="fa-solid fa-shield-halved"></i><span class="submenu-label"> Vigilancia</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('pesca')">
-        <i class="fa-solid fa-fish"></i><span class="submenu-label"> Pesca</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('manana')">
-        <i class="fa-solid fa-calendar-plus"></i><span class="submenu-label"> Mañana</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('corrientes')">
-        <i class="fa-solid fa-arrows-rotate"></i><span class="submenu-label"> Corrientes</span>
-    </button>
-    <button class="submenu-btn" onclick="switchDashTab('historial')">
-        <i class="fa-solid fa-chart-line"></i><span class="submenu-label"> Historial</span>
-    </button>
-</div>
+<a href="https://ko-fi.com/veellab" target="_blank" class="kofi-banner">&#x2665; Apoya</a>
 
-<!-- PANEL OVERVIEW -->
-<div class="panel" id="panel-overview">
-    <div class="panel-header">
-        <div>
-            <p class="panel-label">Overview</p>
-            <h2 class="panel-title" id="panel-title">NAVSTA Rota ROZ</h2>
-            <p class="panel-coords" id="panel-coords">36.636700 N | W 6.349324</p>
-        </div>
+<!-- HEADER -->
+<header class="hdr" id="hdr">
+  <div class="hdr-l">
+    <div class="wordmark">
+      <svg viewBox="0 0 36 36" class="wm-glyph">
+        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="1"/>
+        <circle cx="18" cy="18" r="10" fill="none" stroke="var(--accent)" stroke-width="0.5"/>
+        <line x1="18" y1="2" x2="18" y2="34" stroke="var(--accent)" stroke-width="0.5"/>
+        <line x1="2" y1="18" x2="34" y2="18" stroke="var(--accent)" stroke-width="0.5"/>
+        <polygon points="18,5 21,18 18,15 15,18" fill="var(--accent)"/>
+        <polygon points="18,31 15,18 18,21 21,18" fill="var(--accent)" opacity="0.5"/>
+      </svg>
+      <div class="wm-text">
+        <span class="wm-name">GYREO</span>
+        <span class="wm-tag">MARITIME WX INTEL &middot; v3.5</span>
+      </div>
+    </div>
+    <div class="hdr-divider"></div>
+    <div class="loc" id="loc-block">
+      <div class="loc-row">
+        <span class="loc-pin">&#9670;</span>
+        <span class="loc-name" id="loc-name">ROTA &middot; ES</span>
+        <span class="loc-coords" id="loc-coords">36&deg;38&prime;12&Prime;N &nbsp; 006&deg;21&prime;44&Prime;W</span>
+      </div>
+      <div class="loc-meta">
+        <span id="loc-station">STATION: ES-ROT-01</span>
+        <span class="dot">&bull;</span>
+        <span id="loc-buoy">BUOY: SIMAR-5040040</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hdr-c">
+    <div class="status-pill">
+      <span class="pulse"></span>
+      <span>LIVE</span>
+    </div>
+    <div class="status-meta">
+      <div><span class="lbl">UTC</span><span class="val" id="clock-utc">--:--:--</span></div>
+      <div><span class="lbl">LOCAL</span><span class="val" id="clock-local">--:--:--</span></div>
+      <div><span class="lbl">UPDATED</span><span class="val" id="last-updated">&ndash;</span></div>
+    </div>
+  </div>
+
+  <div class="hdr-r">
+    <div class="hdr-search">
+      <span class="srch-ico">&#8981;</span>
+      <input placeholder="Search station, vessel, MMSI&hellip;" id="search-input"/>
+      <span class="srch-kbd">&#8984;K</span>
+    </div>
+    <div class="hdr-actions">
+      <button class="hdr-btn" id="alerts-btn" onclick="switchNav('alerts')">
+        ALERTS<span class="badge" id="alerts-badge" style="display:none">!</span>
+      </button>
+      <button class="hdr-btn" onclick="switchNav('routing')">REPORTS</button>
+      <button class="hdr-btn primary" onclick="detectarUbicacion()">LOCATE</button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDENAV -->
+  <aside class="sidenav" id="sidenav">
+    <button class="navbtn active" data-nav="overview" onclick="switchNav('overview')">
+      <span class="nav-ico">&#9680;</span><span class="nav-lbl">OVERVIEW</span>
+    </button>
+    <button class="navbtn" data-nav="wind" onclick="switchNav('wind')">
+      <span class="nav-ico">&#9672;</span><span class="nav-lbl">WIND</span>
+    </button>
+    <button class="navbtn" data-nav="waves" onclick="switchNav('waves')">
+      <span class="nav-ico">&#8779;</span><span class="nav-lbl">WAVES</span>
+    </button>
+    <button class="navbtn" data-nav="tides" onclick="switchNav('tides')">
+      <span class="nav-ico">&#9789;</span><span class="nav-lbl">TIDES</span>
+    </button>
+    <button class="navbtn" data-nav="chart" onclick="switchNav('chart')">
+      <span class="nav-ico">&#8862;</span><span class="nav-lbl">CHART</span>
+    </button>
+    <button class="navbtn" data-nav="alerts" onclick="switchNav('alerts')">
+      <span class="nav-ico">&#9651;</span><span class="nav-lbl">ALERTS</span>
+    </button>
+    {% if has_ais %}
+    <button class="navbtn" data-nav="ais" onclick="switchNav('ais')">
+      <span class="nav-ico">&#8876;</span><span class="nav-lbl">AIS</span>
+      <span id="ais-status-indicator" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block" title="AIS status"></span>
+    </button>
+    {% endif %}
+    <button class="navbtn" data-nav="routing" onclick="switchNav('routing')">
+      <span class="nav-ico">&#8982;</span><span class="nav-lbl">ROUTING</span>
+    </button>
+    <button class="navbtn" data-nav="pesca" onclick="switchNav('pesca')">
+      <span class="nav-ico">&#9674;</span><span class="nav-lbl">FISHING</span>
+    </button>
+    <div class="nav-spacer"></div>
+    <button class="navbtn" data-nav="config" onclick="switchNav('config')">
+      <span class="nav-ico">&#9881;</span><span class="nav-lbl">CONFIG</span>
+    </button>
+  </aside>
+
+  <!-- CONTENT -->
+  <section class="content">
+
+    <!-- CONDITIONS BANNER -->
+    <div class="cond-banner" id="cond-banner">
+      <div class="cond-item">
+        <span class="cond-k">CONDITIONS</span>
+        <span class="cond-v ok" id="cond-status">&ndash;</span>
+        <span class="cond-score" id="cond-score"><span class="dim">/100</span></span>
+      </div>
+      <div class="cond-item">
+        <span class="cond-k">SEA STATE</span>
+        <span class="cond-v" id="cond-sea">&ndash;</span>
+        <span class="cond-sub" id="cond-sea-sub">&ndash;</span>
+      </div>
+      <div class="cond-item">
+        <span class="cond-k">VISIBILITY</span>
+        <span class="cond-v" id="cond-vis">&ndash;</span>
+        <span class="cond-sub" id="cond-vis-sub">&ndash;</span>
+      </div>
+      <div class="cond-item" id="cond-advisory-item">
+        <span class="cond-k">ADVISORY</span>
+        <span class="cond-v warn" id="cond-advisory">NO ACTIVE ADVISORIES</span>
+        <span class="cond-sub" id="cond-advisory-sub">&ndash;</span>
+      </div>
+      <div class="cond-item">
+        <span class="cond-k">TIDAL</span>
+        <span class="cond-v" id="cond-tidal">&ndash;</span>
+        <span class="cond-sub" id="cond-tidal-sub">&ndash;</span>
+      </div>
+      <div class="cond-item">
+        <span class="cond-k">WIND</span>
+        <span class="cond-v" id="cond-wind">{{ datos.viento_dir }} {{ datos.beaufort }}BFT</span>
+        <span class="cond-sub" id="cond-wind-sub">{{ datos.viento_kmh }} km/h &middot; GST {{ datos.racha_kmh }}</span>
+      </div>
     </div>
 
-    <div class="geo-bar">
-        <button id="geo-btn" class="geo-btn" onclick="detectarUbicacion()">📍 Mi ubicación</button>
-        <span id="geo-indicator" class="geo-indicator">Datos de Rota (por defecto)</span>
-        <span id="score-dia-badge" style="margin-left:auto;font-size:0.75rem;font-weight:700;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:2px 10px;cursor:pointer" onclick="switchTab('dashboard');switchDashTab('hoy')" title="Score meteorológico del día"></span>
-        <span id="pesca-badge" style="font-size:0.7rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:2px 8px;cursor:pointer" onclick="switchTab('dashboard');switchDashTab('pesca')"></span>
-    </div>
+    <!-- MAIN LAYOUT: instruments + chart -->
+    <div class="layout" id="layout-main">
 
-    <div class="olas-container" id="grafico-olas"></div>
+      <!-- LEFT PANEL -->
+      <div class="left-panel">
+        <div class="grid-instruments">
 
-    <!-- BOTÓN PARTE METEOROLÓGICO -->
-    <button class="config-btn" onclick="mostrarBriefing()" style="background:rgba(74,200,232,0.12);border-color:rgba(74,200,232,0.3);color:#4AC8E8;margin-bottom:0.4rem">
-        <i class="fa-solid fa-file-lines"></i> Parte diario
-    </button>
-
-    <!-- MODAL BRIEFING -->
-    <div id="briefing-modal" class="modal-overlay" style="display:none">
-        <div style="background:#0d1520;border:1px solid rgba(74,200,232,0.2);border-radius:12px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
-            <button onclick="document.getElementById('briefing-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer">✕</button>
-            <p style="color:#4AC8E8;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;margin-bottom:0.75rem">PARTE METEOROLÓGICO</p>
-            <pre id="briefing-text" style="font-family:monospace;font-size:0.78rem;color:rgba(255,255,255,0.8);white-space:pre-wrap;line-height:1.6">Cargando...</pre>
-        </div>
-    </div>
-
-    <!-- BOTÓN CONFIGURAR -->
-    <button class="config-btn" onclick="toggleConfig()">
-        <i class="fa-solid fa-sliders"></i> Personalizar
-    </button>
-
-    <!-- PANEL CONFIGURACIÓN -->
-    <div class="config-panel hidden" id="config-panel">
-        <p class="config-titulo">Widgets visibles</p>
-        <div class="config-grid" id="config-grid"></div>
-        <button class="config-guardar" onclick="guardarPrefs()">Guardar</button>
-    </div>
-
-    <!-- MÉTRICAS -->
-    <div class="metricas" id="metricas-grid">
-
-        <div class="card-metrica widget" data-widget="temperatura">
-            <div class="temp-header">
-                <span class="metrica-valor" id="temp-valor">{{ datos.temperatura_c }}°</span>
-                <button class="temp-toggle" id="temp-btn" onclick="toggleTemp()">°C</button>
+          <!-- WX-01 WIND DIRECTION -->
+          <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-01</span>
+                <span class="inst-name">WIND DIRECTION</span>
+              </div>
+              <span class="inst-unit">&deg; TRUE</span>
             </div>
-            <span class="metrica-sub">Sensación <span id="sensacion">{{ datos.sensacion_c }}°C</span></span>
-        </div>
-
-        <div class="card-metrica widget" data-widget="viento">
-            <div id="brujula-container"></div>
-            <span class="metrica-sub">{{ datos.viento_kmh }} km/h · Racha {{ datos.racha_kmh }} km/h</span>
-        </div>
-
-        <div class="card-metrica widget" data-widget="sol">
-            <div id="sol-container"></div>
-            <span class="metrica-sub">Salida · Puesta</span>
-        </div>
-
-        <div class="card-metrica widget" data-widget="olas">
-            <div id="olas-container"></div>
-            <span class="metrica-sub">Ola máx · Mín {{ datos.altura_min }}m</span>
-        </div>
-
-        <div class="card-metrica widget" data-widget="presion">
-            <div id="presion-container"></div>
-            <span class="metrica-sub">Presión atmosférica</span>
-            <div id="presion-trend-badge" style="display:none"></div>
-        </div>
-
-        <div class="card-metrica widget" data-widget="visibilidad">
-            <div id="visibilidad-container"></div>
-            <span class="metrica-sub">Visibilidad</span>
-        </div>
-
-        {% if datos.temp_agua %}
-        <div class="card-metrica widget" data-widget="temperatura_agua">
-            <div id="temp-agua-container"></div>
-            <span class="metrica-sub">Temp. del agua</span>
-        </div>
-        {% endif %}
-
-        <div class="card-metrica widget" data-widget="beaufort">
-            <div id="beaufort-container"></div>
-            <span class="metrica-sub">Escala Beaufort</span>
-        </div>
-
-        <div class="card-metrica widget" data-widget="mareas" id="widget-mareas" style="cursor:pointer" onclick="switchTab('dashboard');switchDashTab('mareas')">
-            <div id="mareas-state-container">
-                <div style="font-size:1.1rem;font-weight:700;color:rgba(255,255,255,0.4)">–</div>
+            <div class="inst-body" id="brujula-container"></div>
+            <div class="inst-foot" id="wx01-foot">
+              SPD <span id="wx01-spd">{{ datos.viento_kmh }}</span> km/h &middot;
+              GST <span id="wx01-gst">{{ datos.racha_kmh }}</span> km/h
             </div>
-            <span class="metrica-sub" id="mareas-next-text">Cargando mareas...</span>
-        </div>
+          </div>
 
-        {% if has_ais %}
-        <div class="card-metrica" id="widget-vigilancia" style="cursor:pointer" onclick="switchTab('dashboard');switchDashTab('vigilancia')">
-            <div id="vigilancia-estado-container">
-                <div style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.4)">AIS</div>
+          <!-- WX-02 BEAUFORT FORCE -->
+          <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-02</span>
+                <span class="inst-name">BEAUFORT FORCE</span>
+              </div>
+              <span class="inst-unit">SCALE</span>
             </div>
-            <span class="metrica-sub" id="vigilancia-sub-text">Cargando vigilancia...</span>
-        </div>
-        {% endif %}
+            <div class="inst-body" id="beaufort-container"></div>
+          </div>
 
-        <div class="card-metrica" id="widget-corrientes" style="cursor:pointer" onclick="switchTab('dashboard');switchDashTab('corrientes')">
-            <div id="corrientes-container">
-                <div style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.4)">–</div>
+          <!-- WX-03 ATMOS PRESSURE -->
+          <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-03</span>
+                <span class="inst-name">ATMOS PRESSURE</span>
+              </div>
+              <span class="inst-unit">hPa</span>
             </div>
-            <span class="metrica-sub">Corriente marina</span>
+            <div class="inst-body" id="presion-container"></div>
+            <div class="inst-foot" id="wx03-foot">
+              <span id="presion-trend-badge" class="presion-trend-badge"></span>
+            </div>
+          </div>
+
+          <!-- WX-06 TEMPERATURE -->
+          <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-06</span>
+                <span class="inst-name">TEMPERATURE</span>
+              </div>
+              <span class="inst-unit">&deg;C</span>
+            </div>
+            <div class="inst-body" id="termometro-container"></div>
+          </div>
+
+          <!-- WX-04 WAVE HEIGHT — span 4 -->
+          <div class="instrument" style="grid-column: span 4; height: 220px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-04</span>
+                <span class="inst-name">WAVE HEIGHT</span>
+              </div>
+              <span class="inst-unit">Hs &middot; 24H</span>
+            </div>
+            <div class="inst-body" id="grafico-olas" style="width:100%; overflow:hidden"></div>
+            <div class="inst-foot">
+              MAX <span id="wx04-max">{{ datos.altura_max }}</span>m &middot;
+              MIN <span id="wx04-min">{{ datos.altura_min }}</span>m &middot;
+              AVG <span id="wx04-avg">{{ datos.altura_media }}</span>m
+            </div>
+          </div>
+
+          <!-- WX-05 DAYLIGHT ARC — span 2 -->
+          <div class="instrument" style="grid-column: span 2; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-05</span>
+                <span class="inst-name">DAYLIGHT ARC</span>
+              </div>
+              <span class="inst-unit">LOCAL</span>
+            </div>
+            <div class="inst-body" id="sol-container"></div>
+          </div>
+
+          <!-- WX-08 HUMIDITY -->
+          <div class="instrument" style="grid-column: span 1; height: 240px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-08</span>
+                <span class="inst-name">HUMIDITY</span>
+              </div>
+              <span class="inst-unit">%RH</span>
+            </div>
+            <div class="inst-body" id="humidity-container"></div>
+          </div>
+
+          <!-- WX-07 VISIBILITY -->
+          <div class="instrument" style="grid-column: span {% if datos.temp_agua %}3{% else %}4{% endif %}; height: 200px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-07</span>
+                <span class="inst-name">VISIBILITY</span>
+              </div>
+              <span class="inst-unit">km</span>
+            </div>
+            <div class="inst-body" id="visibilidad-container"></div>
+          </div>
+
+          {% if datos.temp_agua %}
+          <!-- WX-09 SEA TEMP -->
+          <div class="instrument" style="grid-column: span 1; height: 200px">
+            <div class="inst-corner inst-corner--tl"></div>
+            <div class="inst-corner inst-corner--tr"></div>
+            <div class="inst-corner inst-corner--bl"></div>
+            <div class="inst-corner inst-corner--br"></div>
+            <div class="inst-head">
+              <div class="inst-label">
+                <span class="inst-code">WX-09</span>
+                <span class="inst-name">SEA TEMP</span>
+              </div>
+              <span class="inst-unit">&deg;C</span>
+            </div>
+            <div class="inst-body" id="temp-agua-container"></div>
+          </div>
+          {% endif %}
+
+        </div><!-- end .grid-instruments -->
+
+        <!-- TIMELINE STRIP -->
+        <div class="tl-strip">
+          <div class="tl-head">
+            <span class="tl-title">12-HOUR FORECAST</span>
+            <span class="tl-legend">
+              <i class="leg leg--good"></i>EXCELLENT
+              <i class="leg leg--fair"></i>ACCEPTABLE
+              <i class="leg leg--poor"></i>POOR
+            </span>
+          </div>
+          <div class="tl-grid" id="tl-grid">
+            <!-- filled by JS -->
+          </div>
         </div>
 
-    </div>
-</div>
+      </div><!-- end .left-panel -->
 
-<!-- PANEL DASHBOARD -->
+      <!-- RIGHT PANEL: Nautical Chart -->
+      <div class="right-panel">
+        <div class="chart-wrap">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span class="chart-tag">CHART</span>
+              <span id="chart-title-text">ATLANTIC &middot; ROTA APPROACH</span>
+            </div>
+            <div class="chart-meta">
+              <span>SCALE 1:75 000</span>
+              <span class="dot">&bull;</span>
+              <span>WGS84</span>
+              <span class="dot">&bull;</span>
+              <span>UTC+02</span>
+            </div>
+          </div>
+
+          <!-- Map layer controls -->
+          <div class="chart-controls" id="map-controls">
+            <div class="chart-layers">
+              {% if has_ais %}
+              <label class="layer-row" id="lyr-ais">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-ais" style="display:none" onchange="toggleMapLayer('ais')"> AIS TRAFFIC
+              </label>
+              {% endif %}
+              <label class="layer-row on" id="lyr-wp">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-waypoints" style="display:none" checked onchange="toggleMapLayer('waypoints')"> WAYPOINTS
+              </label>
+              <label class="layer-row on" id="lyr-roz">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-roz" style="display:none" checked onchange="toggleMapLayer('roz')"> ROZ ZONE
+              </label>
+              <label class="layer-row" id="lyr-alerts">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-alertas" style="display:none" onchange="toggleMapLayer('alertas')"> ALERTS
+              </label>
+              <label class="layer-row" id="lyr-wind">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-wind" style="display:none" onchange="toggleMapLayer('wind')"> WIND FIELD
+              </label>
+              <label class="layer-row" id="lyr-sst">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-sst" style="display:none" onchange="toggleSSTOverlay()"> SST
+              </label>
+              <label class="layer-row" id="lyr-sat">
+                <span class="lyr-chk"></span>
+                <input type="checkbox" id="toggle-satellite" style="display:none" onchange="toggleMapStyle()"> SATELLITE
+              </label>
+              <div style="border-top: 1px solid var(--line); margin: 4px 0; padding-top: 4px;">
+                <label class="layer-row" id="lyr-routing">
+                  <span class="lyr-chk"></span>
+                  <input type="checkbox" id="toggle-routing" style="display:none" onchange="toggleRoutingMode()"> ROUTING
+                </label>
+              </div>
+              <button onclick="openWaypointPanel()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;letter-spacing:0.12em;padding:4px 8px;cursor:pointer;width:100%;margin-top:2px;text-align:left">+ ADD WP</button>
+              <div id="waypoint-add-panel" style="display:none;margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid var(--line)">
+                <input id="wp-nombre" placeholder="Name">
+                <input id="wp-desc" placeholder="Description (optional)">
+                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-4);margin-bottom:4px">Click map to select position</p>
+                <div id="wp-pos">NO POSITION</div>
+                <button onclick="saveWaypoint()" style="background:var(--accent);border:none;border-radius:2px;color:var(--bg-0);font-family:var(--mono-font);font-size:9px;padding:4px 10px;cursor:pointer;width:100%;font-weight:700">SAVE</button>
+              </div>
+              <div id="routing-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--line)">
+                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);margin-bottom:4px">CLICK 1 = ORIGIN &middot; CLICK 2 = DEST</p>
+                <div id="routing-status">NO ROUTE SELECTED</div>
+                <button onclick="calcularRuta()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px;letter-spacing:0.1em">CALCULATE ROUTE</button>
+                <button onclick="limpiarRuta()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:2px;color:var(--ink-3);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;letter-spacing:0.1em">CLEAR</button>
+              </div>
+            </div>
+            <div class="chart-zoom">
+              <button onclick="mapa && mapa.zoomIn()">+</button>
+              <button onclick="mapa && mapa.zoomOut()">&minus;</button>
+              <button class="compass-mini" onclick="mapa && mapa.resetNorth()">
+                <svg viewBox="0 0 24 24"><polygon points="12,3 15,12 12,21 9,12" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="mapa" style="flex:1;min-height:0"></div>
+
+          <div class="chart-footer">
+            <div class="chart-cursor">
+              <span class="lbl">CURSOR</span>
+              <span class="val" id="cursor-lat">&ndash;</span>
+              <span class="val" id="cursor-lon">&ndash;</span>
+              <span class="lbl">DEPTH</span>
+              <span class="val" id="cursor-depth">&ndash;</span>
+            </div>
+            <div class="chart-attr">&copy; MAPBOX &middot; OPENSEAMAP &middot; NOAA</div>
+          </div>
+        </div>
+      </div><!-- end .right-panel -->
+
+    </div><!-- end .layout -->
+  </section>
+</div><!-- end .main -->
+
+<!-- FOOTER -->
+<footer class="ftr">
+  <div class="ftr-l">
+    <span class="ftr-k">DATA SOURCES</span>
+    <span>OPEN-METEO &middot; AEMET &middot; COPERNICUS &middot; OPENSEAMAP &middot; MAPBOX</span>
+  </div>
+  <div class="ftr-c">
+    <span class="ftr-k">FEED</span>
+    <span class="ftr-tick"></span>
+    <span>5MIN &middot; 28 PARAMS &middot; <span id="latency-display">&ndash;</span></span>
+  </div>
+  <div class="ftr-r">
+    <span>v3.5.0-stable &middot; build 20260505.1</span>
+  </div>
+</footer>
+
+<!-- DASHBOARD PANEL (opened by sidenav tabs) -->
 <div class="panel hidden" id="panel-dashboard">
-    <div class="panel-header">
-        <p class="panel-label" id="dash-tab-label">DASHBOARD</p>
-        <button class="close-btn" onclick="switchTab('overview')">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-    </div>
-    <div class="dash-panel" id="dash-content">
-        <p style="color:rgba(255,255,255,0.3);font-size:0.85rem">Selecciona una categoría del menú lateral.</p>
-    </div>
-    <div class="ad-banner" id="ad-banner-dash">
-        <span class="ad-label">Publicidad</span>
-        <!-- AdSense ins tag goes here when approved -->
-    </div>
+  <div class="panel-header">
+    <p class="panel-label" id="dash-tab-label">DASHBOARD</p>
+    <button class="close-btn" onclick="switchNav('overview')">&#x2715;</button>
+  </div>
+  <div class="dash-panel" id="dash-content"></div>
 </div>
 
-<!-- PANEL MAPA -->
-<div class="panel hidden" id="panel-mapa" style="position:relative;padding:0;overflow:hidden;flex:1;min-width:0">
-    <div class="map-controls" id="map-controls">
-        {% if has_ais %}<label class="map-toggle"><input type="checkbox" id="toggle-ais" onchange="toggleMapLayer('ais')"> 🚢 Buques AIS</label>{% endif %}
-        <label class="map-toggle"><input type="checkbox" id="toggle-alertas" onchange="toggleMapLayer('alertas')"> ⚠️ Alertas</label>
-        <label class="map-toggle"><input type="checkbox" checked id="toggle-waypoints" onchange="toggleMapLayer('waypoints')"> 📍 Waypoints</label>
-        <label class="map-toggle"><input type="checkbox" checked id="toggle-roz" onchange="toggleMapLayer('roz')"> 🚫 Zona ROZ</label>
-        <button onclick="openWaypointPanel()" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.25);border-radius:6px;color:#4AC8E8;font-size:0.7rem;padding:3px 8px;cursor:pointer;margin-top:2px;text-align:left">+ Añadir WP</button>
-        <div id="waypoint-add-panel" style="display:none;margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid rgba(255,255,255,0.07)">
-            <input id="wp-nombre" placeholder="Nombre" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:white;padding:3px 6px;font-size:0.72rem;margin-bottom:3px">
-            <input id="wp-desc" placeholder="Descripción (opcional)" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:white;padding:3px 6px;font-size:0.72rem;margin-bottom:3px">
-            <p style="font-size:0.62rem;color:rgba(255,255,255,0.3);margin-bottom:4px">Haz clic en el mapa para seleccionar posición</p>
-            <div id="wp-pos" style="font-size:0.68rem;color:#4AC8E8;margin-bottom:4px">Sin posición</div>
-            <button onclick="saveWaypoint()" style="background:#4AC8E8;border:none;border-radius:5px;color:white;font-size:0.7rem;padding:4px 10px;cursor:pointer;width:100%">Guardar</button>
-        </div>
-        <label class="map-toggle"><input type="checkbox" id="toggle-wind" onchange="toggleMapLayer('wind')"> 💨 Viento</label>
-        <label class="map-toggle"><input type="checkbox" id="toggle-sst" onchange="toggleSSTOverlay()"> 🌊 SST Agua</label>
-        <label class="map-toggle"><input type="checkbox" id="toggle-routing" onchange="toggleRoutingMode()"> 🗺 Routing</label>
-        <div id="routing-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid rgba(255,255,255,0.07)">
-            <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-bottom:4px">Clic 1 = origen · Clic 2 = destino</p>
-            <div id="routing-status" style="font-size:0.65rem;color:#4AC8E8;margin-bottom:4px">Sin ruta seleccionada</div>
-            <button onclick="calcularRuta()" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.25);border-radius:6px;color:#4AC8E8;font-size:0.7rem;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px">Calcular ruta</button>
-            <button onclick="limpiarRuta()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.4);font-size:0.7rem;padding:3px 8px;cursor:pointer;width:100%">Limpiar</button>
-        </div>
-        <hr style="border-color:rgba(255,255,255,0.07);margin:0.4rem 0">
-        <label class="map-toggle"><input type="checkbox" id="toggle-satellite" onchange="toggleMapStyle()"> 🛰 Satélite</label>
-    </div>
-    <div id="mapa" style="width:100%;height:100%"></div>
-</div>
-
-<!-- PANEL AJUSTES -->
+<!-- SETTINGS PANEL -->
 <div class="panel hidden" id="panel-settings">
-    <div class="panel-header">
-        <p class="panel-label">AJUSTES</p>
-        <button class="close-btn" onclick="switchTab('overview')">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
+  <div class="panel-header">
+    <p class="panel-label">CONFIG</p>
+    <button class="close-btn" onclick="switchNav('overview')">&#x2715;</button>
+  </div>
+  <div class="dash-panel" style="padding:1rem">
+
+    <div class="settings-section">
+      <h3>Temperature</h3>
+      <div class="settings-row">
+        <span>Unit</span>
+        <div style="display:flex;gap:0.4rem">
+          <button class="unit-btn active" id="btn-c" onclick="setTempUnit('c')">&deg;C</button>
+          <button class="unit-btn" id="btn-f" onclick="setTempUnit('f')">&deg;F</button>
+        </div>
+      </div>
     </div>
-    <div class="dash-panel" style="padding:1rem">
 
-        <div class="settings-section">
-            <h3>Temperatura</h3>
-            <div class="settings-row">
-                <span>Unidad</span>
-                <div style="display:flex;gap:0.4rem">
-                    <button class="unit-btn active" id="btn-c" onclick="setTempUnit('c')">°C</button>
-                    <button class="unit-btn" id="btn-f" onclick="setTempUnit('f')">°F</button>
-                </div>
-            </div>
+    <div class="settings-section">
+      <h3>Wind</h3>
+      <div class="settings-row">
+        <span>Unit</span>
+        <div style="display:flex;gap:0.4rem">
+          <button class="unit-btn active" id="btn-kmh" onclick="setWindUnit('kmh')">km/h</button>
+          <button class="unit-btn" id="btn-kn" onclick="setWindUnit('kn')">kt</button>
+          <button class="unit-btn" id="btn-ms" onclick="setWindUnit('ms')">m/s</button>
         </div>
-
-        <div class="settings-section">
-            <h3>Viento</h3>
-            <div class="settings-row">
-                <span>Unidad</span>
-                <div style="display:flex;gap:0.4rem">
-                    <button class="unit-btn active" id="btn-kmh" onclick="setWindUnit('kmh')">km/h</button>
-                    <button class="unit-btn" id="btn-kn" onclick="setWindUnit('kn')">kt</button>
-                    <button class="unit-btn" id="btn-ms" onclick="setWindUnit('ms')">m/s</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3>Idioma</h3>
-            <div class="settings-row">
-                <span>Interfaz</span>
-                <div style="display:flex;gap:0.4rem">
-                    <button class="unit-btn active" id="btn-es" onclick="setLang('es')">ES</button>
-                    <button class="unit-btn" id="btn-en" onclick="setLang('en')">EN</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3>Widgets visibles</h3>
-            <div class="config-grid" id="config-grid-settings"></div>
-        </div>
-
-        <div class="settings-section">
-            <h3>Alertas</h3>
-            <div class="settings-row">
-                <span>Ola máx. alerta (m)</span>
-                <input id="alert-ola-max" type="number" step="0.1" min="0.5" max="5" value="2.0"
-                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
-                    onchange="saveAlertSettings()">
-            </div>
-            <div class="settings-row">
-                <span>Viento máx. alerta (km/h)</span>
-                <input id="alert-viento-max" type="number" step="1" min="10" max="100" value="25"
-                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
-                    onchange="saveAlertSettings()">
-            </div>
-            <div class="settings-row">
-                <span>Presión mín. alerta (hPa)</span>
-                <input id="alert-presion-min" type="number" step="1" min="960" max="1030" value="995"
-                    style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:white;padding:4px 8px;font-size:0.78rem;width:70px"
-                    onchange="saveAlertSettings()">
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3>Interfaz</h3>
-            <div class="settings-row">
-                <span>Pantalla completa</span>
-                <button onclick="toggleFullscreen()" style="background:rgba(74,200,232,0.1);border:1px solid rgba(74,200,232,0.25);border-radius:6px;color:#4AC8E8;font-size:0.75rem;padding:4px 12px;cursor:pointer" id="fullscreen-btn">Activar</button>
-            </div>
-            <div class="settings-row">
-                <span>Compartir ubicación</span>
-                <button onclick="compartirEstado()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.6);font-size:0.75rem;padding:4px 12px;cursor:pointer">Copiar URL</button>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3>Acerca de</h3>
-            <div class="settings-row"><span>Versión</span><span style="color:rgba(255,255,255,0.35)">2.4.0</span></div>
-            <div class="settings-row"><span>Iteraciones</span><span style="color:rgba(255,255,255,0.35)">24 features</span></div>
-            <div class="settings-row"><span>Clima</span><span style="color:rgba(255,255,255,0.35)">Open-Meteo</span></div>
-            <div class="settings-row"><span>Alertas</span><span style="color:rgba(255,255,255,0.35)">AEMET OpenData</span></div>
-            {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:rgba(255,255,255,0.35)">AISstream.io</span></div>{% endif %}
-            <div class="settings-row">
-                <span>Novedades</span>
-                <button onclick="mostrarChangelog()" style="background:rgba(74,200,232,0.08);border:1px solid rgba(74,200,232,0.2);border-radius:6px;color:#4AC8E8;font-size:0.75rem;padding:4px 10px;cursor:pointer">Ver</button>
-            </div>
-            <div class="settings-row">
-                <span>Apoya el proyecto</span>
-                <a href="https://ko-fi.com/veellab" target="_blank" style="color:#ff5e5b;font-size:0.8rem">Ko-fi ♥</a>
-            </div>
-        </div>
-
-        <!-- CHANGELOG MODAL -->
-        <div id="changelog-modal" class="modal-overlay" style="display:none">
-            <div style="background:#0d1520;border:1px solid rgba(74,200,232,0.2);border-radius:12px;padding:1.5rem;max-width:550px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
-                <button onclick="document.getElementById('changelog-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.2rem;cursor:pointer">✕</button>
-                <p style="color:#4AC8E8;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;margin-bottom:0.75rem">NOVEDADES v2.4.0</p>
-                <div style="font-size:0.75rem;color:rgba(255,255,255,0.7);line-height:1.6">
-                    <div style="color:#22c55e;font-weight:600;margin-bottom:0.4rem">Iters 14-24 — Mayo 2026</div>
-                    <ul style="margin:0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
-                        <li>Diario de capturas de pesca con condiciones meteorológicas automáticas</li>
-                        <li>Log de vigilancia con export CSV y detección de buques en zona ROZ</li>
-                        <li>Routing meteorológico: analiza condiciones en ruta A→B</li>
-                        <li>Corrientes oceánicas en tiempo real (Open-Meteo Marine)</li>
-                        <li>Tab Mañana: ventana meteorológica del día siguiente</li>
-                        <li>Briefing meteorológico diario en texto plano</li>
-                        <li>SST overlay en mapa: temperatura superficial del agua</li>
-                        <li>Puertos cercanos según geolocalización</li>
-                        <li>Score meteorológico 0-100 en overview</li>
-                        <li>Calendario visual de temporadas de pesca</li>
-                        <li>Análisis de interceptación: buques ROJO con rumbo a la base</li>
-                        <li>Whitelist de buques aprobados en vigilancia</li>
-                        <li>Toasts de alerta configurables (ola, viento, presión)</li>
-                        <li>Historial de condiciones 30 días con gráficos D3</li>
-                        <li>Widget mareas en overview con estado ENTRANTE/SALIENTE</li>
-                        <li>Rosa de vientos polar en tab meteorología</li>
-                        <li>Recordatorio automático de marea próxima</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
+      </div>
     </div>
+
+    <div class="settings-section">
+      <h3>Language</h3>
+      <div class="settings-row">
+        <span>Interface</span>
+        <div style="display:flex;gap:0.4rem">
+          <button class="unit-btn active" id="btn-es" onclick="setLang('es')">ES</button>
+          <button class="unit-btn" id="btn-en" onclick="setLang('en')">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Alerts</h3>
+      <div class="settings-row">
+        <span>Max wave (m)</span>
+        <input id="alert-ola-max" type="number" step="0.1" min="0.5" max="5" value="2.0"
+          style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
+          onchange="saveAlertSettings()">
+      </div>
+      <div class="settings-row">
+        <span>Max wind (km/h)</span>
+        <input id="alert-viento-max" type="number" step="1" min="10" max="100" value="25"
+          style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
+          onchange="saveAlertSettings()">
+      </div>
+      <div class="settings-row">
+        <span>Min pressure (hPa)</span>
+        <input id="alert-presion-min" type="number" step="1" min="960" max="1030" value="995"
+          style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-1);padding:4px 8px;font-family:var(--mono-font);font-size:10px;width:70px"
+          onchange="saveAlertSettings()">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Interface</h3>
+      <div class="settings-row">
+        <span>Fullscreen</span>
+        <button onclick="toggleFullscreen()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:3px;color:var(--accent);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer" id="fullscreen-btn">Activate</button>
+      </div>
+      <div class="settings-row">
+        <span>Share location</span>
+        <button onclick="compartirEstado()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:3px;color:var(--ink-2);font-family:var(--mono-font);font-size:10px;padding:4px 12px;cursor:pointer">Copy URL</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Widgets</h3>
+      <div class="config-grid" id="config-grid-settings"></div>
+    </div>
+
+    <div class="settings-section">
+      <h3>About</h3>
+      <div class="settings-row"><span>Version</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">3.5.0</span></div>
+      <div class="settings-row"><span>Climate</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">Open-Meteo</span></div>
+      <div class="settings-row"><span>Alerts</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">AEMET OpenData</span></div>
+      {% if has_ais %}<div class="settings-row"><span>AIS</span><span style="color:var(--ink-3);font-family:var(--mono-font);font-size:10px">AISstream.io</span></div>{% endif %}
+      <div class="settings-row"><span>Support</span><a href="https://ko-fi.com/veellab" target="_blank" style="color:var(--alert);font-family:var(--mono-font);font-size:10px">Ko-fi &#x2665;</a></div>
+    </div>
+
+  </div>
 </div>
 
-<!-- AD SIDEBAR (visible >1400px) -->
-<div class="ad-sidebar"><span class="ad-label">Publicidad</span></div>
+<!-- BRIEFING MODAL -->
+<div id="briefing-modal" class="modal-overlay" style="display:none">
+  <div style="background:var(--bg-1);border:1px solid var(--line-2);border-radius:4px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+    <button onclick="document.getElementById('briefing-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:var(--ink-3);font-size:1.2rem;cursor:pointer">&#x2715;</button>
+    <p style="font-family:var(--mono-font);color:var(--accent);font-size:10px;letter-spacing:0.2em;margin-bottom:0.75rem">DAILY WEATHER BRIEF</p>
+    <pre id="briefing-text" style="font-family:var(--mono-font);font-size:11px;color:var(--ink-2);white-space:pre-wrap;line-height:1.6">Loading...</pre>
+  </div>
+</div>
 
+<!-- CHANGELOG MODAL (kept for main.js compatibility) -->
+<div id="changelog-modal" class="modal-overlay" style="display:none">
+  <div style="background:var(--bg-1);border:1px solid var(--line-2);border-radius:4px;padding:1.5rem;max-width:550px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+    <button onclick="document.getElementById('changelog-modal').style.display='none'" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:var(--ink-3);font-size:1.2rem;cursor:pointer">&#x2715;</button>
+    <p style="font-family:var(--mono-font);color:var(--accent);font-size:10px;letter-spacing:0.2em;margin-bottom:0.75rem">CHANGELOG v3.5.0</p>
+    <div style="font-size:0.75rem;color:var(--ink-2);line-height:1.6">
+      <div style="color:var(--good);font-weight:600;margin-bottom:0.4rem">Gyreo Redesign — May 2026</div>
+      <ul style="margin:0;padding-left:1.2rem;color:var(--ink-3)">
+        <li>Full Gyreo brand and design system</li>
+        <li>Nautical instrument card layout</li>
+        <li>Conditions banner with live status</li>
+        <li>12-hour timeline forecast strip</li>
+        <li>Improved map chart panel</li>
+        <li>Humidity widget (WX-08)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- DATA VARIABLES -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script>
-    const MAPBOX_KEY = "{{ mapbox_key }}";
-    const horas = {{ datos.horas | tojson | safe }};
-    const alturas = {{ datos.alturas | tojson | safe }};
-    const tempC = {{ datos.temperatura_c }};
-    const sensacionC = {{ datos.sensacion_c }};
-    const vientoGrados = {{ datos.viento_grados }};
-    const vientoDir = "{{ datos.viento_dir }}";
-    const beaufortValor = {{ datos.beaufort }};
-    const sunrise = "{{ datos.sunrise }}";
-    const sunset = "{{ datos.sunset }}";
-    const olaMax = {{ datos.altura_max }};
-    const olaMin = {{ datos.altura_min }};
-    const olaMedia = {{ datos.altura_media }};
-    const prefsIniciales = {{ prefs | tojson | safe }};
-    const presionValor = {{ datos.presion }};
-    const visibilidadValor = {{ datos.visibilidad }};
-    const tempAguaValor = {{ datos.temp_agua or 'null' }};
-    window.vientoKmh = {{ datos.viento_kmh }};
+  const MAPBOX_KEY = "{{ mapbox_key }}";
+  const horas = {{ datos.horas | tojson | safe }};
+  const alturas = {{ datos.alturas | tojson | safe }};
+  const tempC = {{ datos.temperatura_c }};
+  const sensacionC = {{ datos.sensacion_c }};
+  const vientoGrados = {{ datos.viento_grados }};
+  const vientoDir = "{{ datos.viento_dir }}";
+  const beaufortValor = {{ datos.beaufort }};
+  const sunrise = "{{ datos.sunrise }}";
+  const sunset = "{{ datos.sunset }}";
+  const olaMax = {{ datos.altura_max }};
+  const olaMin = {{ datos.altura_min }};
+  const olaMedia = {{ datos.altura_media }};
+  const prefsIniciales = {{ prefs | tojson | safe }};
+  const presionValor = {{ datos.presion }};
+  const visibilidadValor = {{ datos.visibilidad }};
+  const tempAguaValor = {{ datos.temp_agua or 'null' }};
+  window.vientoKmh = {{ datos.viento_kmh }};
+
+  // ── CLOCKS ──
+  function updateClocks() {
+    const now = new Date();
+    const utc = now.toISOString().substr(11, 8);
+    const local = now.toLocaleTimeString('en-GB', { hour12: false });
+    const utcEl = document.getElementById('clock-utc');
+    const localEl = document.getElementById('clock-local');
+    if (utcEl) utcEl.textContent = utc;
+    if (localEl) localEl.textContent = local.slice(0, 8);
+  }
+  setInterval(updateClocks, 1000);
+  updateClocks();
+
+  // ── switchNav — main navigation ──
+  function switchNav(nav) {
+    // Update sidenav active state
+    document.querySelectorAll('.navbtn').forEach(b => {
+      b.classList.toggle('active', b.dataset.nav === nav);
+    });
+
+    const dashPanel = document.getElementById('panel-dashboard');
+    const settingsPanel = document.getElementById('panel-settings');
+    const layoutMain = document.getElementById('layout-main');
+    const condBanner = document.getElementById('cond-banner');
+
+    // Hide overlay panels by default
+    if (dashPanel) dashPanel.classList.add('hidden');
+    if (settingsPanel) settingsPanel.classList.add('hidden');
+
+    if (nav === 'overview') {
+      if (layoutMain) layoutMain.style.display = '';
+      if (condBanner) condBanner.style.display = '';
+    } else if (nav === 'config') {
+      if (layoutMain) layoutMain.style.display = 'none';
+      if (settingsPanel) {
+        settingsPanel.classList.remove('hidden');
+        if (typeof renderSettingsWidgets === 'function') renderSettingsWidgets();
+        if (typeof loadAlertSettingsUI === 'function') loadAlertSettingsUI();
+      }
+    } else if (nav === 'chart') {
+      // Just show overview with map focused
+      if (layoutMain) layoutMain.style.display = '';
+      if (condBanner) condBanner.style.display = '';
+      if (window.mapa) window.mapa.resize();
+    } else {
+      // wind, waves, tides, alerts, ais, routing, pesca → show dashboard panel
+      if (layoutMain) layoutMain.style.display = 'none';
+      if (dashPanel) dashPanel.classList.remove('hidden');
+      // Map nav name to dash tab name
+      const navToDash = {
+        wind: 'meteo',
+        waves: 'oleaje',
+        tides: 'mareas',
+        alerts: 'alertas',
+        ais: 'ais',
+        routing: 'routing',
+        pesca: 'pesca',
+      };
+      const dashTab = navToDash[nav] || nav;
+      if (typeof switchDashTab === 'function') switchDashTab(dashTab);
+    }
+  }
+
+  // ── switchDashboardPanel — alias used by header buttons ──
+  function switchDashboardPanel(tab) {
+    const nav = {
+      alertas: 'alerts',
+      prediccion: 'routing',
+    }[tab] || tab;
+    switchNav(nav);
+  }
+
+  // ── Layer row checkbox sync ──
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.layer-row input[type=checkbox]').forEach(cb => {
+      cb.closest('.layer-row').classList.toggle('on', cb.checked);
+      cb.addEventListener('change', () => {
+        cb.closest('.layer-row').classList.toggle('on', cb.checked);
+      });
+    });
+  });
+
+  // ── Conditions banner update ──
+  function updateConditionsBanner(datos) {
+    const seaNames = ['CALM','RIPPLED','WAVELETS','SLIGHT','MODERATE','ROUGH','VERY ROUGH','HIGH','VERY HIGH','PHENOMENAL','PHENOMENAL','PHENOMENAL','PHENOMENAL'];
+    const seaEl = document.getElementById('cond-sea');
+    const seaSubEl = document.getElementById('cond-sea-sub');
+    if (seaEl) seaEl.textContent = seaNames[datos.beaufort] || '–';
+    if (seaSubEl) seaSubEl.textContent = 'BFT ' + datos.beaufort;
+
+    const visKm = datos.visibilidad;
+    const visLabel = visKm > 10 ? 'EXCELLENT' : visKm > 4 ? 'GOOD' : visKm > 1 ? 'MODERATE' : 'POOR';
+    const visEl = document.getElementById('cond-vis');
+    const visSubEl = document.getElementById('cond-vis-sub');
+    if (visEl) visEl.textContent = visLabel;
+    if (visSubEl) visSubEl.textContent = visKm + ' KM';
+
+    const windEl = document.getElementById('cond-wind');
+    const windSubEl = document.getElementById('cond-wind-sub');
+    if (windEl) windEl.textContent = datos.viento_dir + ' BFT' + datos.beaufort;
+    if (windSubEl) windSubEl.textContent = datos.viento_kmh + ' km/h · GST ' + datos.racha_kmh;
+
+    // Update wx01 footer
+    const spdEl = document.getElementById('wx01-spd');
+    const gstEl = document.getElementById('wx01-gst');
+    if (spdEl) spdEl.textContent = datos.viento_kmh;
+    if (gstEl) gstEl.textContent = datos.racha_kmh;
+  }
+
+  // ── Humidity widget loader (fetches from /api/datos) ──
+  function loadHumidityWidget() {
+    fetch('/api/datos')
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.humidity != null) {
+          if (typeof dibujarHumedad === 'function') {
+            const dewPoint = d.temperatura_c - ((100 - d.humidity) / 5);
+            dibujarHumedad(d.humidity, parseFloat(dewPoint.toFixed(1)));
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
+  // ── Score dia badge in conditions ──
+  function updateCondScore(score, label, color) {
+    const scoreEl = document.getElementById('cond-score');
+    const statusEl = document.getElementById('cond-status');
+    if (scoreEl) scoreEl.innerHTML = score + '<span class="dim">/100</span>';
+    if (statusEl) {
+      statusEl.textContent = label || 'OPERABLE';
+      statusEl.style.color = color || '';
+    }
+  }
+
+  // ── score-dia-badge compatibility (referenced by main.js) ──
+  // main.js calls document.getElementById('score-dia-badge') — provide a hidden element
+  (function() {
+    const hidden = document.createElement('span');
+    hidden.id = 'score-dia-badge';
+    hidden.style.display = 'none';
+    document.body.appendChild(hidden);
+    // Also provide pesca-badge
+    const pescaHidden = document.createElement('span');
+    pescaHidden.id = 'pesca-badge';
+    pescaHidden.style.display = 'none';
+    document.body.appendChild(pescaHidden);
+    // mareas-state-container
+    const mareas = document.createElement('div');
+    mareas.id = 'mareas-state-container';
+    mareas.style.display = 'none';
+    document.body.appendChild(mareas);
+    // mareas-next-text
+    const mareasNext = document.createElement('div');
+    mareasNext.id = 'mareas-next-text';
+    mareasNext.style.display = 'none';
+    document.body.appendChild(mareasNext);
+    // vigilancia-estado-container
+    const vig = document.createElement('div');
+    vig.id = 'vigilancia-estado-container';
+    vig.style.display = 'none';
+    document.body.appendChild(vig);
+    // vigilancia-sub-text
+    const vigSub = document.createElement('div');
+    vigSub.id = 'vigilancia-sub-text';
+    vigSub.style.display = 'none';
+    document.body.appendChild(vigSub);
+    // corrientes-container
+    const corr = document.createElement('div');
+    corr.id = 'corrientes-container';
+    corr.style.display = 'none';
+    document.body.appendChild(corr);
+    // temp-valor (used by setTempUnit)
+    const tv = document.createElement('span');
+    tv.id = 'temp-valor';
+    tv.style.display = 'none';
+    document.body.appendChild(tv);
+    // sensacion
+    const sens = document.createElement('span');
+    sens.id = 'sensacion';
+    sens.style.display = 'none';
+    document.body.appendChild(sens);
+    // temp-btn
+    const tb = document.createElement('button');
+    tb.id = 'temp-btn';
+    tb.style.display = 'none';
+    document.body.appendChild(tb);
+    // auto-refresh-badge placeholder div
+    const arb = document.createElement('div');
+    arb.id = 'panel-overview';
+    arb.style.display = 'none';
+    document.body.appendChild(arb);
+    // panel-mapa stub — mapa.js appends coord display to this element
+    const pm = document.createElement('div');
+    pm.id = 'panel-mapa';
+    pm.style.cssText = 'display:none;position:relative';
+    document.body.appendChild(pm);
+    // sidebar + sidebar-overlay + submenu stubs (referenced by main.js switchTab)
+    const sb = document.createElement('div');
+    sb.id = 'sidebar';
+    sb.style.display = 'none';
+    document.body.appendChild(sb);
+    const sbo = document.createElement('div');
+    sbo.id = 'sidebar-overlay';
+    sbo.style.display = 'none';
+    document.body.appendChild(sbo);
+    const smenu = document.createElement('div');
+    smenu.id = 'submenu';
+    smenu.style.display = 'none';
+    document.body.appendChild(smenu);
+    // geo.js stubs
+    const gbtn = document.createElement('button');
+    gbtn.id = 'geo-btn';
+    gbtn.style.display = 'none';
+    document.body.appendChild(gbtn);
+    const gind = document.createElement('span');
+    gind.id = 'geo-indicator';
+    gind.style.display = 'none';
+    document.body.appendChild(gind);
+    const ptitle = document.createElement('span');
+    ptitle.id = 'panel-title';
+    ptitle.style.display = 'none';
+    document.body.appendChild(ptitle);
+    const pcoords = document.createElement('span');
+    pcoords.id = 'panel-coords';
+    pcoords.style.display = 'none';
+    document.body.appendChild(pcoords);
+    // config-panel stub (used by toggleConfig in main.js)
+    const cp = document.createElement('div');
+    cp.id = 'config-panel';
+    cp.className = 'config-panel hidden';
+    cp.style.display = 'none';
+    cp.innerHTML = '<p class="config-titulo">Widgets</p><div class="config-grid" id="config-grid"></div><button class="config-guardar" onclick="guardarPrefs()">Save</button>';
+    document.body.appendChild(cp);
+  })();
+
+  // ── switchTab compatibility wrapper (called by dashboard.js and main.js) ──
+  function switchTab(tab) {
+    const tabMap = {
+      overview: 'overview',
+      dashboard: 'alerts',
+      mapa: 'chart',
+      settings: 'config',
+    };
+    switchNav(tabMap[tab] || tab);
+  }
+
+  // ── Timeline strip builder ──
+  function buildTimelineStrip() {
+    const grid = document.getElementById('tl-grid');
+    if (!grid || !horas || !alturas) return;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const maxH = Math.max(...alturas);
+    const sliceHoras = horas.slice(0, 12);
+    const sliceAlturas = alturas.slice(0, 12);
+    grid.innerHTML = '';
+    sliceHoras.forEach((t, i) => {
+      const h = sliceAlturas[i] || 0;
+      const pct = maxH > 0 ? (h / maxH) : 0;
+      const barH = Math.round(20 + pct * 70);
+      const cond = h < 1.0 ? 'good' : h < 2.0 ? 'fair' : 'poor';
+      const isNow = t.startsWith(String(currentHour).padStart(2, '0'));
+      const cell = document.createElement('div');
+      cell.className = 'tl-cell tl-cell--' + cond + (isNow ? ' now' : '');
+      cell.innerHTML = `
+        <div class="tl-time">${t}</div>
+        <div class="tl-bar" style="height:${barH}%"></div>
+        <div class="tl-vals">
+          <div><span class="tl-k">H</span>${h.toFixed(1)}</div>
+        </div>`;
+      grid.appendChild(cell);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    buildTimelineStrip();
+    loadHumidityWidget();
+    // Update conditions banner with initial data
+    updateConditionsBanner({
+      beaufort: beaufortValor,
+      visibilidad: visibilidadValor,
+      viento_dir: vientoDir,
+      viento_kmh: window.vientoKmh,
+      racha_kmh: {{ datos.racha_kmh }},
+    });
+  });
 </script>
+
 <script src="/static/js/widgets.js"></script>
 <script src="/static/js/main.js"></script>
 <script src="/static/js/mapa.js"></script>
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/geo.js"></script>
 <script>
-// Register Service Worker for offline support
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
-            .catch(() => {});
+// ── Cursor coordinate bridge: update chart footer from Mapbox mousemove ──
+// mapa.js registers its own mousemove that updates #map-coords.
+// We also hook the map's mousemove to update our chart-footer elements.
+(function bridgeMapCursor() {
+  function hookMap() {
+    if (!window.mapa) { setTimeout(hookMap, 200); return; }
+    window.mapa.on('mousemove', function(e) {
+      const latEl = document.getElementById('cursor-lat');
+      const lonEl = document.getElementById('cursor-lon');
+      if (latEl) latEl.textContent = e.lngLat.lat.toFixed(4) + '°N';
+      if (lonEl) lonEl.textContent = Math.abs(e.lngLat.lng).toFixed(4) + '°W';
     });
+    // Also update last-updated display on map data
+    const upd = document.getElementById('last-updated');
+    if (upd) {
+      setInterval(() => {
+        const s = Math.floor((Date.now() - (window._lastUpdate || Date.now())) / 1000);
+        upd.textContent = s < 60 ? s + 's ago' : Math.floor(s / 60) + 'm ago';
+      }, 5000);
+      window._lastUpdate = Date.now();
+    }
+  }
+  // Wait for mapa.js to create window.mapa
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hookMap);
+  } else {
+    hookMap();
+  }
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  });
 }
 </script>
 </body>
