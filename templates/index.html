@@ -116,6 +116,7 @@
 
   <!-- SIDENAV -->
   <aside class="sidenav" id="sidenav">
+    <!-- 4 primary — always visible on mobile and desktop -->
     <button class="navbtn active" data-nav="overview" onclick="switchNav('overview')">
       <span class="nav-ico">&#9680;</span><span class="nav-lbl">OVERVIEW</span>
     </button>
@@ -125,35 +126,82 @@
     <button class="navbtn" data-nav="waves" onclick="switchNav('waves')">
       <span class="nav-ico">&#8779;</span><span class="nav-lbl">WAVES</span>
     </button>
-    <button class="navbtn" data-nav="tides" onclick="switchNav('tides')">
-      <span class="nav-ico">&#9789;</span><span class="nav-lbl">TIDES</span>
-    </button>
     <button class="navbtn" data-nav="chart" onclick="switchNav('chart')">
       <span class="nav-ico">&#8862;</span><span class="nav-lbl">CHART</span>
     </button>
-    <button class="navbtn" data-nav="alerts" onclick="switchNav('alerts')">
-      <span class="nav-ico">&#9651;</span><span class="nav-lbl">ALERTS</span>
-    </button>
-    {% if has_ais %}
-    <button class="navbtn" data-nav="ais" onclick="switchNav('ais')">
-      <span class="nav-ico">&#8876;</span><span class="nav-lbl">AIS</span>
-      <span id="ais-status-indicator" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block" title="AIS status"></span>
-    </button>
-    {% endif %}
-    <button class="navbtn" data-nav="corrientes" onclick="switchNav('corrientes')">
-      <span class="nav-ico">&#8651;</span><span class="nav-lbl">CURRENTS</span>
-    </button>
-    <button class="navbtn" data-nav="routing" onclick="switchNav('routing')">
-      <span class="nav-ico">&#8982;</span><span class="nav-lbl">ROUTING</span>
-    </button>
-    <button class="navbtn" data-nav="pesca" onclick="switchNav('pesca')">
-      <span class="nav-ico">&#9674;</span><span class="nav-lbl">FISHING</span>
-    </button>
+
+    <!-- Desktop-only secondary items -->
+    <div class="nav-desktop-only">
+      <button class="navbtn" data-nav="tides" onclick="switchNav('tides')">
+        <span class="nav-ico">&#9789;</span><span class="nav-lbl">TIDES</span>
+      </button>
+      <button class="navbtn" data-nav="alerts" onclick="switchNav('alerts')">
+        <span class="nav-ico">&#9651;</span><span class="nav-lbl">ALERTS</span>
+      </button>
+      {% if has_ais %}
+      <button class="navbtn" data-nav="ais" onclick="switchNav('ais')">
+        <span class="nav-ico">&#8876;</span><span class="nav-lbl">AIS</span>
+        <span id="ais-status-indicator" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block" title="AIS status"></span>
+      </button>
+      {% endif %}
+      <button class="navbtn" data-nav="corrientes" onclick="switchNav('corrientes')">
+        <span class="nav-ico">&#8651;</span><span class="nav-lbl">CURRENTS</span>
+      </button>
+      <button class="navbtn" data-nav="routing" onclick="switchNav('routing')">
+        <span class="nav-ico">&#8982;</span><span class="nav-lbl">ROUTING</span>
+      </button>
+      <button class="navbtn" data-nav="pesca" onclick="switchNav('pesca')">
+        <span class="nav-ico">&#9674;</span><span class="nav-lbl">FISHING</span>
+      </button>
+    </div>
+
     <div class="nav-spacer"></div>
-    <button class="navbtn" data-nav="config" onclick="switchNav('config')">
-      <span class="nav-ico">&#9881;</span><span class="nav-lbl">CONFIG</span>
+
+    <div class="nav-desktop-only">
+      <button class="navbtn" data-nav="config" onclick="switchNav('config')">
+        <span class="nav-ico">&#9881;</span><span class="nav-lbl">CONFIG</span>
+      </button>
+    </div>
+
+    <!-- Mobile-only MORE button -->
+    <button class="navbtn nav-mobile-only" id="more-btn" onclick="toggleMoreSheet()">
+      <span class="nav-ico">&#8943;</span><span class="nav-lbl">MORE</span>
     </button>
   </aside>
+
+  <!-- MORE bottom sheet (mobile) -->
+  <div id="more-scrim" class="nav-sheet-scrim" style="display:none" onclick="closeMoreSheet()"></div>
+  <div id="more-sheet" class="nav-sheet" style="display:none">
+    <div class="nav-sheet-head">
+      <span>MORE</span>
+      <button onclick="closeMoreSheet()">&#x2715;</button>
+    </div>
+    <div class="nav-sheet-grid">
+      <button class="nav-sheet-btn" onclick="switchNav('tides');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#9789;</span><span>TIDES</span>
+      </button>
+      <button class="nav-sheet-btn" onclick="switchNav('alerts');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#9651;</span><span>ALERTS</span>
+      </button>
+      {% if has_ais %}
+      <button class="nav-sheet-btn" onclick="switchNav('ais');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#8876;</span><span>AIS</span>
+      </button>
+      {% endif %}
+      <button class="nav-sheet-btn" onclick="switchNav('corrientes');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#8651;</span><span>CURRENTS</span>
+      </button>
+      <button class="nav-sheet-btn" onclick="switchNav('routing');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#8982;</span><span>ROUTING</span>
+      </button>
+      <button class="nav-sheet-btn" onclick="switchNav('pesca');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#9674;</span><span>FISHING</span>
+      </button>
+      <button class="nav-sheet-btn" onclick="switchNav('config');closeMoreSheet()">
+        <span class="nav-sheet-ico">&#9881;</span><span>CONFIG</span>
+      </button>
+    </div>
+  </div>
 
   <!-- CONTENT -->
   <section class="content">
@@ -683,15 +731,30 @@
         if (typeof loadAlertSettingsUI === 'function') loadAlertSettingsUI();
       }
     } else if (nav === 'chart') {
-      // Just show overview with map focused
       if (layoutMain) layoutMain.style.display = '';
       if (condBanner) condBanner.style.display = '';
-      if (window.mapa) window.mapa.resize();
+      if (window.mapa) {
+        setTimeout(() => {
+          window.mapa.resize();
+          document.querySelector('.right-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    } else if (nav === 'routing') {
+      // Show the layout and activate routing mode in the map panel
+      if (layoutMain) layoutMain.style.display = '';
+      if (condBanner) condBanner.style.display = '';
+      if (window.mapa) {
+        setTimeout(() => {
+          window.mapa.resize();
+          const rtToggle = document.getElementById('toggle-routing');
+          if (rtToggle && !rtToggle.checked) { rtToggle.checked = true; rtToggle.dispatchEvent(new Event('change')); }
+          document.querySelector('.right-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
     } else {
-      // wind, waves, tides, alerts, ais, routing, pesca → show dashboard panel
+      // wind, waves, tides, alerts, ais, pesca, corrientes → show dashboard panel
       if (layoutMain) layoutMain.style.display = 'none';
       if (dashPanel) dashPanel.classList.remove('hidden');
-      // Map nav name to dash tab name
       const navToDash = {
         wind: 'meteo',
         waves: 'oleaje',
@@ -699,12 +762,28 @@
         alerts: 'alertas',
         ais: 'ais',
         corrientes: 'corrientes',
-        routing: 'routing',
         pesca: 'pesca',
       };
       const dashTab = navToDash[nav] || nav;
       if (typeof switchDashTab === 'function') switchDashTab(dashTab);
     }
+  }
+
+  // ── MORE sheet (mobile) ──
+  function toggleMoreSheet() {
+    const sheet = document.getElementById('more-sheet');
+    const scrim = document.getElementById('more-scrim');
+    const btn = document.getElementById('more-btn');
+    const isOpen = sheet.style.display !== 'none';
+    sheet.style.display = isOpen ? 'none' : 'block';
+    scrim.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.classList.toggle('active', !isOpen);
+  }
+  function closeMoreSheet() {
+    document.getElementById('more-sheet').style.display = 'none';
+    document.getElementById('more-scrim').style.display = 'none';
+    const btn = document.getElementById('more-btn');
+    if (btn) btn.classList.remove('active');
   }
 
   // ── switchDashboardPanel — alias used by header buttons ──

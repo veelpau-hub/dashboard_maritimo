@@ -1164,15 +1164,38 @@ def _solunar_times(lat=36.637, lon=-6.362, date=None):
         {'time': fmt(to_local(minor2_utc)), 'type': 'menor', 'duration': 45, 'label': 'Luna en el oeste'},
     ]
 
-def fetch_pesca():
+def fetch_pesca(lat=36.62, lon=-6.35):
     from datetime import datetime
     import math as _math
 
-    datos = get_datos_maritimos()
-    wave_h = datos.get('altura_max', 0)
-    wind_kmh = datos.get('viento_kmh', 0)
-    visibility_km = datos.get('visibilidad', 10)
-    pressure = datos.get('presion', 1013)
+    # Use location-specific data when custom coords are given
+    if abs(lat - 36.62) > 0.01 or abs(lon - (-6.35)) > 0.01:
+        try:
+            r_mar = requests.get('https://marine-api.open-meteo.com/v1/marine', params={
+                'latitude': lat, 'longitude': lon,
+                'current': 'wave_height', 'timezone': 'auto'
+            }, verify=False, timeout=8).json()
+            r_met = requests.get('https://api.open-meteo.com/v1/forecast', params={
+                'latitude': lat, 'longitude': lon,
+                'current': 'wind_speed_10m,surface_pressure,visibility',
+                'timezone': 'auto'
+            }, verify=False, timeout=8).json()
+            wave_h = r_mar.get('current', {}).get('wave_height') or 0
+            wind_kmh = r_met.get('current', {}).get('wind_speed_10m') or 0
+            visibility_km = round((r_met.get('current', {}).get('visibility') or 10000) / 1000, 1)
+            pressure = r_met.get('current', {}).get('surface_pressure') or 1013
+        except Exception:
+            datos = get_datos_maritimos()
+            wave_h = datos.get('altura_max', 0)
+            wind_kmh = datos.get('viento_kmh', 0)
+            visibility_km = datos.get('visibilidad', 10)
+            pressure = datos.get('presion', 1013)
+    else:
+        datos = get_datos_maritimos()
+        wave_h = datos.get('altura_max', 0)
+        wind_kmh = datos.get('viento_kmh', 0)
+        visibility_km = datos.get('visibilidad', 10)
+        pressure = datos.get('presion', 1013)
 
     # Tide state — use mareas data
     mareas = get_dash_cached('mareas', fetch_mareas)
@@ -1643,7 +1666,7 @@ def api_save_prefs():
     save_preferencias('default', data)
     return jsonify({'ok': True})
 
-COORD_AWARE_TABS = {'meteo', 'oleaje', 'prediccion'}
+COORD_AWARE_TABS = {'meteo', 'oleaje', 'prediccion', 'pesca', 'corrientes'}
 
 @app.route('/api/localize')
 def api_localize():
