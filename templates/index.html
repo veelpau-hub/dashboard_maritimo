@@ -140,6 +140,9 @@
       <span id="ais-status-indicator" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block" title="AIS status"></span>
     </button>
     {% endif %}
+    <button class="navbtn" data-nav="corrientes" onclick="switchNav('corrientes')">
+      <span class="nav-ico">&#8651;</span><span class="nav-lbl">CURRENTS</span>
+    </button>
     <button class="navbtn" data-nav="routing" onclick="switchNav('routing')">
       <span class="nav-ico">&#8982;</span><span class="nav-lbl">ROUTING</span>
     </button>
@@ -695,6 +698,7 @@
         tides: 'mareas',
         alerts: 'alertas',
         ais: 'ais',
+        corrientes: 'corrientes',
         routing: 'routing',
         pesca: 'pesca',
       };
@@ -1002,6 +1006,36 @@ window.switchTab = function(tab) {
   const tabMap = { overview:'overview', dashboard:'alerts', mapa:'chart', settings:'config' };
   switchNav(tabMap[tab] || tab);
 };
+
+// Bridge geo.js location detection to Gyreo header elements
+(function() {
+  const locBtn = document.querySelector('[onclick="detectarUbicacion()"]');
+  const titleStub = document.getElementById('panel-title');
+  const coordsStub = document.getElementById('panel-coords');
+  const locName = document.getElementById('loc-name');
+  const locCoords = document.getElementById('loc-coords');
+  if (!titleStub || !locName) return;
+
+  // Watch panel-title stub — geo.js writes the location name there
+  const obs = new MutationObserver(() => {
+    if (titleStub.textContent) {
+      locName.textContent = titleStub.textContent + ' · ES';
+      if (locBtn) locBtn.textContent = 'LOCATED';
+    }
+    if (coordsStub && coordsStub.textContent) {
+      locCoords.textContent = coordsStub.textContent;
+    }
+  });
+  obs.observe(titleStub, { characterData: true, childList: true, subtree: true });
+
+  // Show loading state immediately on click
+  if (locBtn) {
+    const origOnclick = locBtn.getAttribute('onclick');
+    locBtn.addEventListener('click', function() {
+      locBtn.textContent = 'LOCATING…';
+    }, { capture: true });
+  }
+})();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
