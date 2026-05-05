@@ -942,7 +942,7 @@ function renderPesca(data, el) {
 
         ${sparkData.length ? `<p class="dash-section-title">Temperatura del agua (últimas lecturas)</p>${sparkEl}` : ''}
 
-        <p class="dash-section-title">Especies en temporada — Bahía de Cádiz</p>
+        <p class="dash-section-title">Especies en temporada — ${document.getElementById('loc-name')?.textContent?.split(' ·')[0] || 'Zona local'}</p>
         <div class="dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${speciesCards}</div>
 
         <p class="dash-section-title" style="margin-top:1rem">Calendario de temporadas</p>
@@ -1319,7 +1319,7 @@ function renderCorrientes(data, el) {
     }).join('');
 
     el.innerHTML = `
-        <p class="dash-section-title">Corrientes oceánicas — Bahía de Cádiz</p>
+        <p class="dash-section-title">Corrientes oceánicas — ${document.getElementById('loc-name')?.textContent?.split(' ·')[0] || 'Zona local'}</p>
         <div class="dash-grid" style="margin-bottom:0.75rem">
             <div class="dash-card" style="text-align:center">
                 <div class="dash-card-label">Velocidad actual</div>
