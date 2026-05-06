@@ -17,6 +17,9 @@ AISHUB_USER = os.getenv('AISHUB_USER', '')
 import ais_stream
 ais_stream.start()
 
+import agente_monitor
+import agente_fixer
+
 
 COASTAL_POINTS = [
     {"name": "Rota",              "lat": 36.637, "lon": -6.362},
@@ -2175,6 +2178,45 @@ def llms_txt():
 @app.route('/sitemap.xml')
 def sitemap_xml():
     return app.send_static_file('sitemap.xml'), 200, {'Content-Type': 'application/xml; charset=utf-8'}
+
+# ── Agentes de monitorización y auto-recuperación ────────────────────
+
+def _get_cache_age():
+    """Devuelve segundos desde la última actualización de la caché principal."""
+    if not _cache_time:
+        return None
+    return time.time() - _cache_time
+
+def _is_ais_ok():
+    status = ais_stream.get_status()
+    if status.get('connected'):
+        return True, ''
+    last = status.get('last_message_ago')
+    detail = f'desconectado · último mensaje hace {last:.0f}s' if last else 'desconectado'
+    return False, detail
+
+def _clear_cache():
+    global _cache, _cache_time, _dash_cache, _dash_cache_time
+    _cache = {}
+    _cache_time = 0
+    _dash_cache = {}
+    _dash_cache_time = {}
+    logging.info('[fixer] Caché principal y dashboard invalidadas')
+
+def _restart_ais():
+    ais_stream.start()
+
+_on_issue = agente_fixer.make_issue_handler(
+    clear_cache_fn=_clear_cache,
+    restart_ais_fn=_restart_ais,
+)
+
+agente_monitor.start(
+    aemet_key=AEMET_API_KEY,
+    get_cache_age_fn=_get_cache_age,
+    is_ais_ok_fn=_is_ais_ok,
+    on_issue_fn=_on_issue,
+)
 
 if __name__ == '__main__':
     init_db()
