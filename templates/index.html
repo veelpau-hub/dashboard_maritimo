@@ -827,13 +827,23 @@
   function setMapFullscreen(on) {
     document.body.classList.toggle('map-fullscreen', on);
     const btn = document.getElementById('map-expand-btn');
-    if (btn) btn.innerHTML = on ? '&#x26F6; INSTRUMENTOS' : '&#x2715; COMPACTO';
+    if (btn) {
+      const isMobile = window.innerWidth <= 720;
+      btn.innerHTML = on
+        ? (isMobile ? '&#x2630; INSTRUMENTOS' : '&#x26F6; INSTRUMENTOS')
+        : (isMobile ? '&#x26F6; MAPA COMPLETO' : '&#x2715; COMPACTO');
+    }
     setTimeout(() => { if (window.mapa) window.mapa.resize(); }, 80);
   }
 
   function toggleMapFullscreen() {
     const isFullscreen = document.body.classList.contains('map-fullscreen');
     setMapFullscreen(!isFullscreen);
+    // En mobile, sincronizar con la navegación
+    if (window.innerWidth <= 720) {
+      const nav = isFullscreen ? 'overview' : 'chart';
+      document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.nav === nav));
+    }
   }
 
   // ── Conditions banner update ──

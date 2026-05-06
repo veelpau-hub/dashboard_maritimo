@@ -1151,11 +1151,12 @@ body::before {
 }
 
 /* ───────── MAPA PANTALLA COMPLETA ───────── */
-/* Colapsa el panel izquierdo y expande el mapa dentro del layout normal.
-   El sidenav (78px desktop / barra inferior mobile) queda fuera del layout
-   y delimita el espacio disponible de forma natural, sin position:fixed. */
+/* Desktop: colapsa el panel izquierdo dentro del grid normal.
+   El sidenav (78px) queda a la izquierda del layout de forma natural. */
 body.map-fullscreen .layout {
   grid-template-columns: 1fr;
+  flex: 1;
+  min-height: 0;
 }
 body.map-fullscreen .left-panel,
 body.map-fullscreen .cond-banner,
@@ -1167,14 +1168,37 @@ body.map-fullscreen .right-panel {
   border-left: none;
   min-height: 0;
 }
-/* El contenido (.content) y el layout deben ocupar toda la altura disponible */
 body.map-fullscreen .content {
   flex: 1;
   min-height: 0;
 }
-body.map-fullscreen .layout {
-  flex: 1;
-  min-height: 0;
+
+/* Mobile: el mapa ocupa todo el viewport excepto la barra inferior de navegación.
+   Se oculta el header para maximizar el espacio del mapa. */
+@media (max-width: 720px) {
+  body.map-fullscreen .hdr {
+    display: none;
+  }
+  body.map-fullscreen .main {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  body.map-fullscreen .content {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  body.map-fullscreen .right-panel {
+    height: auto !important;
+    flex: 1;
+    min-height: 0;
+  }
+  body.map-fullscreen .chart-header {
+    padding: 8px 10px;
+  }
+  body.map-fullscreen .chart-footer {
+    display: none;
+  }
 }
 
 /* Botón expand/collapse en cabecera del mapa */
@@ -1200,4 +1224,10 @@ body.map-fullscreen .layout {
 .map-expand-btn:hover {
   background: color-mix(in oklch, var(--accent) 16%, transparent);
   border-color: var(--accent);
+}
+@media (max-width: 720px) {
+  .map-expand-btn {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
 }
