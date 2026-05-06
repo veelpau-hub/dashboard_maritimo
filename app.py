@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 import requests
 import time
 import urllib3
@@ -69,6 +69,11 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.asin(math.sqrt(a))
 
 app = Flask(__name__)
+
+@app.before_request
+def https_redirect():
+    if request.headers.get('X-Forwarded-Proto') == 'http':
+        return redirect(request.url.replace('http://', 'https://', 1), code=301)
 
 # --- BASE DE DATOS ---
 def init_db():
