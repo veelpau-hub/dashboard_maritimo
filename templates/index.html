@@ -422,17 +422,20 @@
       <div class="right-panel">
         <div class="chart-wrap">
           <div class="chart-header">
-            <div class="chart-title">
-              <span class="chart-tag">CARTA</span>
-              <span id="chart-title-text">CARTA NÁUTICA</span>
+            <div class="chart-header-left">
+              <div class="chart-title">
+                <span class="chart-tag">CARTA</span>
+                <span id="chart-title-text">CARTA NÁUTICA</span>
+              </div>
+              <div class="chart-meta">
+                <span>ESCALA 1:75 000</span>
+                <span class="dot">&bull;</span>
+                <span>WGS84</span>
+                <span class="dot">&bull;</span>
+                <span>UTC+02</span>
+              </div>
             </div>
-            <div class="chart-meta">
-              <span>ESCALA 1:75 000</span>
-              <span class="dot">&bull;</span>
-              <span>WGS84</span>
-              <span class="dot">&bull;</span>
-              <span>UTC+02</span>
-            </div>
+            <button class="map-expand-btn" id="map-expand-btn" onclick="toggleMapFullscreen()">&#x2715; COMPACTO</button>
           </div>
 
           <!-- Map layer controls -->
@@ -749,12 +752,8 @@
     } else if (nav === 'chart') {
       if (layoutMain) layoutMain.style.display = '';
       if (condBanner) condBanner.style.display = '';
-      if (window.mapa) {
-        setTimeout(() => {
-          window.mapa.resize();
-          document.querySelector('.right-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-      }
+      if (typeof setMapFullscreen === 'function') setMapFullscreen(true);
+      setTimeout(() => { if (window.mapa) window.mapa.resize(); }, 80);
     } else if (nav === 'routing') {
       // Show the layout and activate routing mode in the map panel
       if (layoutMain) layoutMain.style.display = '';
@@ -819,7 +818,23 @@
         cb.closest('.layer-row').classList.toggle('on', cb.checked);
       });
     });
+
+    // Activar mapa pantalla completa por defecto
+    setMapFullscreen(true);
   });
+
+  // ── Mapa pantalla completa ──
+  function setMapFullscreen(on) {
+    document.body.classList.toggle('map-fullscreen', on);
+    const btn = document.getElementById('map-expand-btn');
+    if (btn) btn.innerHTML = on ? '&#x26F6; INSTRUMENTOS' : '&#x2715; COMPACTO';
+    setTimeout(() => { if (window.mapa) window.mapa.resize(); }, 80);
+  }
+
+  function toggleMapFullscreen() {
+    const isFullscreen = document.body.classList.contains('map-fullscreen');
+    setMapFullscreen(!isFullscreen);
+  }
 
   // ── Conditions banner update ──
   function updateConditionsBanner(datos) {

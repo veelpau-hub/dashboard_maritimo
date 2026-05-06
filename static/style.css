@@ -1149,3 +1149,54 @@ body::before {
 @media (min-width: 721px) {
   #mob-loc-bar { display: none !important; }
 }
+
+/* ───────── MAPA PANTALLA COMPLETA ───────── */
+.right-panel {
+  transition: none;
+}
+body.map-fullscreen .right-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  border: none !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+}
+body.map-fullscreen .sidenav {
+  z-index: 201;
+  border-right: 1px solid var(--line);
+}
+body.map-fullscreen .left-panel,
+body.map-fullscreen .cond-banner,
+body.map-fullscreen .ftr,
+body.map-fullscreen .tl-strip {
+  display: none !important;
+}
+body.map-fullscreen .hdr {
+  z-index: 201;
+  position: relative;
+}
+/* Botón expand/collapse en cabecera del mapa */
+.chart-header {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.chart-header-left { display: flex; flex-direction: column; gap: 4px; }
+.map-expand-btn {
+  background: color-mix(in oklch, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 22%, transparent);
+  border-radius: 3px;
+  color: var(--accent);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.map-expand-btn:hover {
+  background: color-mix(in oklch, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+}
