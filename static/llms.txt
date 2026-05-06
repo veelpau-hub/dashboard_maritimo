@@ -1,0 +1,50 @@
+# Gyreo
+
+> Real-time maritime meteorological intelligence dashboard for the Spanish coastline.
+
+## What is Gyreo?
+
+Gyreo is a web application that provides sailors, fishermen, and nautical enthusiasts with live marine weather data and navigation tools for the Spanish coastline. It aggregates multiple data sources into a single unified dashboard.
+
+## Features
+
+- **Wind**: Speed and direction in Beaufort scale with real-time updates
+- **Wave height**: Significant wave height, swell period and direction
+- **Atmospheric pressure**: Current barometric pressure and trend
+- **Sea temperature**: Surface sea temperature from Copernicus/Open-Meteo
+- **Tides**: Next high/low tide times and heights
+- **Marine currents**: Ocean current speed and direction
+- **Solar arc**: Sunrise, sunset, golden hour, and solar elevation
+- **Visibility**: Estimated nautical visibility
+- **AEMET weather alerts**: Official Spanish meteorological agency warnings
+- **Nautical chart**: Interactive map with Mapbox + OpenSeaMap overlay
+- **Route planning**: Waypoint-based route builder with distance and bearing
+- **Fishing zones**: Local fishing areas with depth, bottom type, techniques and species
+- **12-hour forecast strip**: Hourly forecast for the next 12 hours
+
+## Data Sources
+
+- **Open-Meteo**: Wind, waves, pressure, sea temperature, 12-hour forecast (open-meteo.com)
+- **AEMET OpenData**: Official Spanish weather alerts and coastal conditions (opendata.aemet.es)
+- **Copernicus Marine Service**: Ocean currents and sea temperature
+- **OpenSeaMap**: Nautical chart overlay (tile layer)
+
+## Target Audience
+
+- Recreational sailors navigating Spanish coastal waters
+- Professional and recreational fishermen
+- Nautical sports practitioners (kitesurfing, windsurfing, diving, paddleboarding)
+- Coastal navigation enthusiasts in Spain
+
+## Technical Details
+
+- URL: https://www.gyreo.es/
+- Language: Spanish (es-ES)
+- Platform: Web (responsive, PWA-ready)
+- Backend: Python / Flask
+- Deployment: Railway
+- License: Proprietary
+
+## Coverage
+
+Spanish coastline: Atlantic coast (Galicia, Cantabria, Basque Country, Andalusia) and Mediterranean coast. Default location: Bay of Cádiz / Rota. Supports any user-specified coordinates via geolocation.

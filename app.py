@@ -2168,6 +2168,14 @@ def api_routing():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/llms.txt')
+def llms_txt():
+    return app.send_static_file('llms.txt'), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    return app.send_static_file('sitemap.xml'), 200, {'Content-Type': 'application/xml; charset=utf-8'}
+
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
