@@ -421,6 +421,8 @@
       <!-- RIGHT PANEL: Nautical Chart -->
       <div class="right-panel">
         <div class="chart-wrap">
+
+          <!-- Chart header -->
           <div class="chart-header">
             <div class="chart-header-left">
               <div class="chart-title">
@@ -428,111 +430,193 @@
                 <span id="chart-title-text">CARTA NÁUTICA</span>
               </div>
               <div class="chart-meta">
-                <span>ESCALA 1:75 000</span>
+                <span>1:75 000</span>
                 <span class="dot">&bull;</span>
                 <span>WGS84</span>
                 <span class="dot">&bull;</span>
-                <span>UTC+02</span>
+                <span class="basemap-pill" id="basemap-pill" onclick="cycleBasemap()">OSCURO</span>
               </div>
             </div>
             <button class="map-expand-btn" id="map-expand-btn" onclick="toggleMapFullscreen()">&#x2715; COMPACTO</button>
           </div>
 
-          <!-- Map layer controls -->
-          <div class="chart-controls" id="map-controls">
-            <div class="chart-layers">
-              {% if has_ais %}
-              <label class="layer-row" id="lyr-ais">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-ais" style="display:none" onchange="toggleMapLayer('ais')"> TRÁFICO AIS
-              </label>
-              {% endif %}
-              <label class="layer-row on" id="lyr-wp">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-waypoints" style="display:none" checked onchange="toggleMapLayer('waypoints')"> WAYPOINTS
-              </label>
-              <label class="layer-row on" id="lyr-roz">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-roz" style="display:none" checked onchange="toggleMapLayer('roz')"> ZONA ROZ
-              </label>
-              <label class="layer-row" id="lyr-alerts">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-alertas" style="display:none" onchange="toggleMapLayer('alertas')"> AVISOS
-              </label>
-              <label class="layer-row" id="lyr-wind">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-wind" style="display:none" onchange="toggleMapLayer('wind')"> CAMPO VIENTO
-              </label>
-              <label class="layer-row" id="lyr-sst">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-sst" style="display:none" onchange="toggleSSTOverlay()"> TSM
-              </label>
-              <label class="layer-row" id="lyr-seamark">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-seamark" style="display:none" onchange="toggleSeamark()"> CARTA NÁUTICA
-              </label>
-              <label class="layer-row" id="lyr-sat">
-                <span class="lyr-chk"></span>
-                <input type="checkbox" id="toggle-satellite" style="display:none" onchange="toggleMapStyle()"> SATÉLITE
-              </label>
-              <div style="border-top: 1px solid var(--line); margin: 4px 0; padding-top: 4px;">
-                <label class="layer-row" id="lyr-routing">
-                  <span class="lyr-chk"></span>
-                  <input type="checkbox" id="toggle-routing" style="display:none" onchange="toggleRoutingMode()"> RUTA METEO
-                </label>
-              </div>
-              <div id="routing-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--line)">
-                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);margin-bottom:4px">CLIC 1 = ORIGEN &middot; CLIC 2 = DESTINO</p>
-                <div id="routing-status">SIN RUTA SELECCIONADA</div>
-                <button onclick="calcularRuta()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px;letter-spacing:0.1em">CALCULAR RUTA</button>
-                <button onclick="limpiarRuta()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:2px;color:var(--ink-3);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;letter-spacing:0.1em">LIMPIAR</button>
-              </div>
-              <div style="border-top: 1px solid var(--line); margin: 4px 0; padding-top: 4px;">
-                <label class="layer-row" id="lyr-naut-route">
-                  <span class="lyr-chk"></span>
-                  <input type="checkbox" id="toggle-naut-route" style="display:none" onchange="toggleNautRouteMode()"> RUTA NÁUTICA
-                </label>
-              </div>
-              <div id="naut-route-panel" style="display:none;margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--line)">
-                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);margin-bottom:4px">CLIC EN EL MAPA = AÑADIR WP</p>
-                <div id="naut-route-total" style="font-family:var(--mono-font);font-size:8px;color:var(--accent);margin-bottom:4px">—</div>
-                <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
-                  <label style="font-family:var(--mono-font);font-size:8px;color:var(--ink-3);white-space:nowrap">Vel (kt)</label>
-                  <input id="naut-speed" type="number" min="0" max="30" step="0.5" placeholder="0" oninput="recalcNautETA()" style="width:100%;font-family:var(--mono-font);font-size:8px;padding:2px 4px">
-                </div>
-                <button onclick="exportGPX()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;margin-bottom:2px;letter-spacing:0.1em">&#x2913; EXPORTAR GPX</button>
-                <button onclick="clearNautRoute()" style="background:var(--bg-2);border:1px solid var(--line);border-radius:2px;color:var(--ink-3);font-family:var(--mono-font);font-size:9px;padding:3px 8px;cursor:pointer;width:100%;letter-spacing:0.1em">&#x2715; BORRAR RUTA</button>
-              </div>
-              <button onclick="openWaypointPanel()" style="background:color-mix(in oklch,var(--accent) 10%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:2px;color:var(--accent);font-family:var(--mono-font);font-size:9px;letter-spacing:0.12em;padding:4px 8px;cursor:pointer;width:100%;margin-top:4px;text-align:left">+ GUARDAR LUGAR</button>
-              <div id="waypoint-add-panel" style="display:none;margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid var(--line)">
-                <input id="wp-nombre" placeholder="Nombre">
-                <input id="wp-desc" placeholder="Descripción (opcional)">
-                <p style="font-family:var(--mono-font);font-size:8px;color:var(--ink-4);margin-bottom:4px">Toca el mapa para seleccionar posición</p>
-                <div id="wp-pos">SIN POSICIÓN</div>
-                <button onclick="saveWaypoint()" style="background:var(--accent);border:none;border-radius:2px;color:var(--bg-0);font-family:var(--mono-font);font-size:9px;padding:4px 10px;cursor:pointer;width:100%;font-weight:700">GUARDAR</button>
-              </div>
-            </div>
-            <div class="chart-zoom">
-              <button onclick="mapa && mapa.zoomIn()">+</button>
-              <button onclick="mapa && mapa.zoomOut()">&minus;</button>
-              <button class="compass-mini" onclick="mapa && mapa.resetNorth()">
-                <svg viewBox="0 0 24 24"><polygon points="12,3 15,12 12,21 9,12" fill="currentColor"/></svg>
+          <!-- Map canvas — floating UI lives here -->
+          <div class="chart-canvas" id="panel-mapa">
+            <div id="mapa"></div>
+
+            <!-- TOP-LEFT: layers toggle -->
+            <div class="chart-tools-top">
+              <button class="chart-tool-btn" id="capas-btn" onclick="toggleLayersDrawer()">
+                <svg viewBox="0 0 16 16"><path d="M8 1 L1 5 L8 9 L15 5 Z M1 8 L8 12 L15 8 M1 11 L8 15 L15 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                CAPAS
+                <span class="chart-tool-count" id="capas-count">2</span>
               </button>
             </div>
-          </div>
 
-          <div id="mapa" style="flex:1;min-height:0"></div>
-
-          <div class="chart-footer">
-            <div class="chart-cursor">
-              <span class="lbl">CURSOR</span>
-              <span class="val" id="cursor-lat">&ndash;</span>
-              <span class="val" id="cursor-lon">&ndash;</span>
-              <span class="lbl">PROF.</span>
-              <span class="val" id="cursor-depth">&ndash;</span>
+            <!-- RIGHT VERTICAL TOOLBAR -->
+            <div class="chart-tools-right">
+              <div class="chart-tool-group">
+                <button class="chart-tool-btn icon" onclick="mapa&&mapa.zoomIn()" title="Acercar">+</button>
+                <button class="chart-tool-btn icon" onclick="mapa&&mapa.zoomOut()" title="Alejar">&minus;</button>
+              </div>
+              <div class="chart-tool-group">
+                <button class="chart-tool-btn icon" onclick="if(typeof detectarUbicacion==='function')detectarUbicacion()" title="Mi posición">
+                  <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="currentColor"/><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1"/><line x1="8" y1="0" x2="8" y2="3" stroke="currentColor" stroke-width="1"/><line x1="8" y1="13" x2="8" y2="16" stroke="currentColor" stroke-width="1"/><line x1="0" y1="8" x2="3" y2="8" stroke="currentColor" stroke-width="1"/><line x1="13" y1="8" x2="16" y2="8" stroke="currentColor" stroke-width="1"/></svg>
+                </button>
+                <button class="chart-tool-btn icon" id="measure-btn" onclick="toggleMeasureTool()" title="Medir distancia">
+                  <svg viewBox="0 0 16 16"><path d="M2 11 L11 2 L14 5 L5 14 Z M5 8 L7 10 M8 5 L10 7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+                </button>
+                <button class="chart-tool-btn icon" onclick="toggleMapFullscreen()" title="Pantalla completa">
+                  <svg viewBox="0 0 16 16"><path d="M2 6 L2 2 L6 2 M14 6 L14 2 L10 2 M2 10 L2 14 L6 14 M14 10 L14 14 L10 14" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+                </button>
+              </div>
+              <div class="chart-tool-group">
+                <button class="chart-tool-btn icon compass" onclick="mapa&&mapa.resetNorth()" title="Norte arriba">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/><polygon points="12,3 15,12 12,11 9,12" fill="var(--alert)"/><polygon points="12,21 9,12 12,13 15,12" fill="currentColor" opacity="0.6"/></svg>
+                </button>
+              </div>
             </div>
-            <div class="chart-attr">&copy; MAPBOX &middot; OPENSEAMAP &middot; NOAA</div>
-          </div>
+
+            <!-- BOTTOM-LEFT: coordinate + measure readout -->
+            <div class="chart-readout" id="chart-readout">
+              <div class="readout-row">
+                <span class="ro-k">CURSOR</span>
+                <span class="ro-v" id="readout-lat">&mdash;</span>
+                <span class="ro-v" id="readout-lon">&mdash;</span>
+              </div>
+              <div class="readout-row dim">
+                <span class="ro-k">DEMORA</span><span class="ro-v" id="readout-bearing">&mdash;</span>
+                <span class="ro-sep">&middot;</span>
+                <span class="ro-k">DIST</span><span class="ro-v" id="readout-dist">&mdash;</span>
+              </div>
+              <div class="readout-row measure" id="readout-measure" style="display:none">
+                <span class="ro-k">MEDICI&Oacute;N</span>
+                <span class="ro-v" id="readout-measure-val">&mdash;</span>
+                <span class="ro-sep">&middot;</span>
+                <span class="ro-v" id="readout-measure-eta"></span>
+                <button class="ro-clear" onclick="clearMeasure()">&times;</button>
+              </div>
+            </div>
+
+            <!-- BOTTOM-RIGHT: scale bar -->
+            <div class="chart-scalebar">
+              <div class="sb-bar"><span></span><span></span><span></span><span></span></div>
+              <div class="sb-labels"><span>0</span><span>1 NM</span></div>
+            </div>
+
+            <!-- LAYERS DRAWER SCRIM -->
+            <div class="chart-drawer-scrim" id="drawer-scrim" style="display:none" onclick="closeLayersDrawer()"></div>
+
+            <!-- LAYERS DRAWER -->
+            <div class="chart-drawer" id="chart-drawer" style="display:none">
+              <div class="drawer-head">
+                <span>CAPAS Y DATOS</span>
+                <button onclick="closeLayersDrawer()">&times;</button>
+              </div>
+              <div class="drawer-section">
+                <div class="drawer-sec-title">CAPA BASE</div>
+                <div class="drawer-segmented" id="basemap-seg">
+                  <button onclick="setBasemap('DARK')" class="on">OSCURO</button>
+                  <button onclick="setBasemap('NAUTICAL')">N&Aacute;UTICA</button>
+                  <button onclick="setBasemap('SATELLITE')">SAT&Eacute;LITE</button>
+                </div>
+              </div>
+              <div class="drawer-section">
+                <div class="drawer-sec-title">CAPAS</div>
+                <button class="drawer-layer on" id="dl-waypoints" onclick="toggleDrawerLayer('waypoints')">
+                  <span class="dl-chk"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+                  <span class="dl-lbl">WAYPOINTS</span>
+                  <span class="dl-count" id="dl-count-waypoints"></span>
+                </button>
+                <button class="drawer-layer" id="dl-wind" onclick="toggleDrawerLayer('wind')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">CAMPO VIENTO</span>
+                  <span class="dl-count" id="dl-count-wind"></span>
+                </button>
+                <button class="drawer-layer" id="dl-sst" onclick="toggleDrawerLayer('sst')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">TSM</span>
+                  <span class="dl-count" id="dl-count-sst"></span>
+                </button>
+                {% if has_ais %}
+                <button class="drawer-layer" id="dl-ais" onclick="toggleDrawerLayer('ais')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">TR&Aacute;FICO AIS</span>
+                  <span class="dl-count" id="dl-count-ais"></span>
+                </button>
+                {% endif %}
+                <button class="drawer-layer" id="dl-seamark" onclick="toggleDrawerLayer('seamark')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">CARTA N&Aacute;UTICA</span>
+                  <span class="dl-count"></span>
+                </button>
+                <button class="drawer-layer on" id="dl-roz" onclick="toggleDrawerLayer('roz')">
+                  <span class="dl-chk"><svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+                  <span class="dl-lbl">ZONA ROZ</span>
+                  <span class="dl-count">1</span>
+                </button>
+              </div>
+              <div class="drawer-section">
+                <div class="drawer-sec-title">NAVEGACI&Oacute;N</div>
+                <button class="drawer-layer" id="dl-naut-route" onclick="toggleDrawerLayer('naut-route')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">RUTA N&Aacute;UTICA</span>
+                  <span class="dl-count" id="dl-count-naut-route"></span>
+                </button>
+                <button class="drawer-layer" id="dl-routing" onclick="toggleDrawerLayer('routing')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">RUTA METEO</span>
+                  <span class="dl-count"></span>
+                </button>
+                <button class="drawer-layer" onclick="openWaypointPanel();closeLayersDrawer()">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">+ GUARDAR LUGAR</span>
+                  <span class="dl-count"></span>
+                </button>
+              </div>
+              <div class="drawer-section">
+                <div class="drawer-sec-title">FUENTE</div>
+                <div class="drawer-meta">&copy; MAPBOX &middot; OPENSEAMAP &middot; NOAA</div>
+              </div>
+            </div>
+
+            <!-- FLOATING PANELS -->
+            <div id="routing-panel" class="chart-float-panel" style="display:none">
+              <div class="float-panel-head">RUTA METEO</div>
+              <div class="float-panel-hint">CLIC 1 = ORIGEN &middot; CLIC 2 = DESTINO</div>
+              <div id="routing-status" class="float-panel-status">SIN RUTA</div>
+              <div class="float-panel-actions">
+                <button onclick="calcularRuta()">CALCULAR</button>
+                <button onclick="limpiarRuta()">LIMPIAR</button>
+              </div>
+            </div>
+
+            <div id="naut-route-panel" class="chart-float-panel" style="display:none">
+              <div class="float-panel-head">RUTA N&Aacute;UTICA</div>
+              <div class="float-panel-hint">CLIC EN EL MAPA = A&Ntilde;ADIR WP</div>
+              <div id="naut-route-total" class="float-panel-status">&mdash;</div>
+              <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
+                <span class="ro-k" style="white-space:nowrap">Vel (kt)</span>
+                <input id="naut-speed" type="number" min="0" max="30" step="0.5" placeholder="0" oninput="recalcNautETA()" style="flex:1;background:var(--bg-2);border:1px solid var(--line-2);color:var(--ink-1);font-family:var(--mono-font);font-size:9px;padding:3px 6px">
+              </div>
+              <div class="float-panel-actions">
+                <button onclick="exportGPX()">&#x2913; GPX</button>
+                <button onclick="clearNautRoute()">&#x2715; BORRAR</button>
+              </div>
+            </div>
+
+            <div id="waypoint-add-panel" class="chart-float-panel" style="display:none">
+              <div class="float-panel-head">GUARDAR LUGAR</div>
+              <input id="wp-nombre" placeholder="Nombre">
+              <input id="wp-desc" placeholder="Descripci&oacute;n (opcional)">
+              <div id="wp-pos" class="float-panel-hint">Toca el mapa</div>
+              <div class="float-panel-actions">
+                <button onclick="saveWaypoint()">GUARDAR</button>
+                <button onclick="openWaypointPanel()">CANCELAR</button>
+              </div>
+            </div>
+
+          </div><!-- end .chart-canvas -->
         </div>
       </div><!-- end .right-panel -->
 
