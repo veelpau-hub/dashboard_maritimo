@@ -2,7 +2,7 @@ import os
 import logging
 import requests
 
-TELEGRAM_TOKEN   = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_TOKEN   = os.getenv('TELEGRAM_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
 def send(message: str, silent: bool = False) -> bool:
