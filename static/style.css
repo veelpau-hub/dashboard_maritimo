@@ -1151,20 +1151,11 @@ body::before {
 }
 
 /* ───────── MAPA PANTALLA COMPLETA ───────── */
-.right-panel {
-  transition: none;
-}
-body.map-fullscreen .right-panel {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  border: none !important;
-  height: 100dvh !important;
-  width: 100vw !important;
-}
-body.map-fullscreen .sidenav {
-  z-index: 201;
-  border-right: 1px solid var(--line);
+/* Colapsa el panel izquierdo y expande el mapa dentro del layout normal.
+   El sidenav (78px desktop / barra inferior mobile) queda fuera del layout
+   y delimita el espacio disponible de forma natural, sin position:fixed. */
+body.map-fullscreen .layout {
+  grid-template-columns: 1fr;
 }
 body.map-fullscreen .left-panel,
 body.map-fullscreen .cond-banner,
@@ -1172,10 +1163,20 @@ body.map-fullscreen .ftr,
 body.map-fullscreen .tl-strip {
   display: none !important;
 }
-body.map-fullscreen .hdr {
-  z-index: 201;
-  position: relative;
+body.map-fullscreen .right-panel {
+  border-left: none;
+  min-height: 0;
 }
+/* El contenido (.content) y el layout deben ocupar toda la altura disponible */
+body.map-fullscreen .content {
+  flex: 1;
+  min-height: 0;
+}
+body.map-fullscreen .layout {
+  flex: 1;
+  min-height: 0;
+}
+
 /* Botón expand/collapse en cabecera del mapa */
 .chart-header {
   flex-direction: row !important;

@@ -739,7 +739,7 @@
 
     if (nav === 'overview') {
       if (layoutMain) layoutMain.style.display = '';
-      if (condBanner) condBanner.style.display = '';
+      if (typeof setMapFullscreen === 'function') setMapFullscreen(false);
       window.scrollTo(0, 0);
       setTimeout(() => { if (window.mapa) window.mapa.resize(); }, 80);
     } else if (nav === 'config') {
