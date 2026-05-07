@@ -639,58 +639,62 @@ let _windyReady  = false;
 let _windyLayer  = 'wind';
 
 function _applyWindyOverlay() {
-    const overlay = document.getElementById('windy-overlay');
-    const sel     = document.getElementById('windy-layer-sel');
-    const cnt     = document.getElementById('dl-count-windy');
-    if (!overlay) return;
+    // Windy API requires a div with id="windy" — this is hardcoded in their library.
+    const windyDiv = document.getElementById('windy');
+    const sel = document.getElementById('windy-layer-sel');
+    const cnt = document.getElementById('dl-count-windy');
+    if (!windyDiv) return;
+
     if (_layers.windy) {
-        overlay.style.display = 'block';
+        windyDiv.style.display = 'block';
         if (sel) sel.style.display = 'flex';
         if (cnt) cnt.textContent = _windyLayer.toUpperCase();
         if (!_windyReady) _initWindy();
         else _syncWindyView();
     } else {
-        overlay.style.display = 'none';
+        windyDiv.style.display = 'none';
         if (sel) sel.style.display = 'none';
         if (cnt) cnt.textContent = '';
     }
 }
 
 function _initWindy() {
-    if (typeof windyInit !== 'undefined') {
-        _doInitWindy();
+    // The script is loaded in <head> with async — it may not be ready yet.
+    // Poll until windyInit is available, then initialize.
+    if (typeof windyInit === 'undefined') {
+        setTimeout(_initWindy, 300);
         return;
     }
-    // Lazy-load Windy boot script
-    const s = document.createElement('script');
-    s.src = 'https://api.windy.com/assets/map-forecast/libBoot.js';
-    s.onload = _doInitWindy;
-    s.onerror = () => console.warn('[windy] Failed to load Windy API');
-    document.head.appendChild(s);
+    _doInitWindy();
 }
 
 function _doInitWindy() {
-    const container = document.getElementById('windy-overlay');
-    if (!container || typeof windyInit === 'undefined') return;
-    // The container must be visible AND painted (have real pixel dimensions)
-    // before windyInit is called, otherwise Leaflet measures 0×0 and fails.
-    setTimeout(() => {
-        windyInit({
-            key:       WINDY_KEY,
-            container: container,
-            lat:       mapa.getCenter().lat,
-            lon:       mapa.getCenter().lng,
-            zoom:      Math.round(mapa.getZoom()),
-        }, api => {
-            _windyAPI   = api;
-            _windyReady = true;
-            api.overlays.change(_windyLayer);
-            // Sync current Mapbox view immediately
-            _syncWindyView();
-            mapa.on('moveend', _syncWindyView);
-            mapa.on('zoomend', _syncWindyView);
-        });
-    }, 250);
+    const windyDiv = document.getElementById('windy');
+    if (!windyDiv) return;
+
+    // Verify the div has real pixel dimensions before initializing.
+    // Leaflet measures the container on init — if it's 0×0 it fails silently.
+    const rect = windyDiv.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        setTimeout(_doInitWindy, 300);
+        return;
+    }
+
+    // windyInit uses #windy div automatically — do NOT pass container option.
+    windyInit({
+        key:     WINDY_KEY,
+        lat:     mapa.getCenter().lat,
+        lon:     mapa.getCenter().lng,
+        zoom:    Math.round(mapa.getZoom()),
+        overlay: _windyLayer,
+        verbose: false,
+    }, api => {
+        _windyAPI   = api;
+        _windyReady = true;
+        _syncWindyView();
+        mapa.on('moveend', _syncWindyView);
+        mapa.on('zoomend', _syncWindyView);
+    });
 }
 
 function _syncWindyView() {
@@ -712,23 +716,30 @@ function setWindyLayer(layer) {
 // FEATURE 2 — GEBCO BATHYMETRY
 // GEBCO tiles as a Mapbox GL raster layer.
 // ============================================================
+// GEBCO WMS endpoint — confirmed working with CORS (Access-Control-Allow-Origin: *)
+// tiles.gebco.net/overlays/* timed out; wms.gebco.net WMS is the reliable alternative.
+const GEBCO_WMS = 'https://wms.gebco.net/mapserv?' +
+    'SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap' +
+    '&BBOX={bbox-epsg-3857}&SRS=EPSG:3857' +
+    '&WIDTH=256&HEIGHT=256' +
+    '&LAYERS=GEBCO_LATEST&STYLES=&FORMAT=image%2Fpng&TRANSPARENT=TRUE';
+
 function _applyGEBCO() {
     if (!mapLayersReady) return;
     const active = _layers.gebco;
     if (active && !mapa.getSource('gebco')) {
         mapa.addSource('gebco', {
             type: 'raster',
-            tiles: ['https://tiles.gebco.net/overlays/gebco_latest/{z}/{x}/{y}.png'],
+            tiles: [GEBCO_WMS],
             tileSize: 256,
             attribution: '© GEBCO',
         });
-        // Insert below the first symbol layer so it sits under labels/icons.
-        // Never reference a specific layer by name — it might not exist yet.
-        const firstSymbol = mapa.getStyle().layers.find(l => l.type === 'symbol')?.id;
+        // Insert below the first fill/line layer so it sits under all vector overlays.
+        const firstFill = mapa.getStyle().layers.find(l => l.type === 'fill' || l.type === 'line')?.id;
         mapa.addLayer({
             id: 'gebco-layer', type: 'raster', source: 'gebco',
-            paint: { 'raster-opacity': 0.6 },
-        }, firstSymbol);
+            paint: { 'raster-opacity': 0.65 },
+        }, firstFill);
     } else if (mapa.getLayer('gebco-layer')) {
         mapa.setLayoutProperty('gebco-layer', 'visibility', active ? 'visible' : 'none');
     }
