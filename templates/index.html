@@ -38,6 +38,9 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 
+  <!-- Turf.js — geospatial calculations -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -556,8 +559,45 @@
                   <span class="dl-count">1</span>
                 </button>
               </div>
+              <!-- METEOROLOGÍA WINDY -->
+              <div class="drawer-section">
+                <div class="drawer-sec-title">METEOROLOG&Iacute;A</div>
+                <button class="drawer-layer" id="dl-windy" onclick="toggleDrawerLayer('windy')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">WINDY OVERLAY</span>
+                  <span class="dl-count" id="dl-count-windy"></span>
+                </button>
+                <div class="windy-layer-sel" id="windy-layer-sel" style="display:none">
+                  <button class="wls-btn on" data-layer="wind" onclick="setWindyLayer('wind')">VIENTO</button>
+                  <button class="wls-btn" data-layer="pressure" onclick="setWindyLayer('pressure')">PRESI&Oacute;N</button>
+                  <button class="wls-btn" data-layer="temp" onclick="setWindyLayer('temp')">TEMP</button>
+                  <button class="wls-btn" data-layer="rain" onclick="setWindyLayer('rain')">LLUVIA</button>
+                  <button class="wls-btn" data-layer="waves" onclick="setWindyLayer('waves')">OLAS</button>
+                  <button class="wls-btn" data-layer="currents" onclick="setWindyLayer('currents')">CORRIENTES</button>
+                </div>
+              </div>
+              <!-- TOPOGRAFÍA -->
+              <div class="drawer-section">
+                <div class="drawer-sec-title">TOPOGRAF&Iacute;A</div>
+                <button class="drawer-layer" id="dl-gebco" onclick="toggleDrawerLayer('gebco')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">BATIMETR&Iacute;A GEBCO</span>
+                  <span class="dl-count"></span>
+                </button>
+                <button class="drawer-layer" id="dl-graticule" onclick="toggleDrawerLayer('graticule')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">CUADR&Iacute;CULA</span>
+                  <span class="dl-count"></span>
+                </button>
+              </div>
+              <!-- NAVEGACIÓN -->
               <div class="drawer-section">
                 <div class="drawer-sec-title">NAVEGACI&Oacute;N</div>
+                <button class="drawer-layer" id="dl-route-plan" onclick="toggleDrawerLayer('route-plan')">
+                  <span class="dl-chk"></span>
+                  <span class="dl-lbl">PLANIFICACI&Oacute;N DE RUTA</span>
+                  <span class="dl-count" id="dl-count-route-plan"></span>
+                </button>
                 <button class="drawer-layer" id="dl-naut-route" onclick="toggleDrawerLayer('naut-route')">
                   <span class="dl-chk"></span>
                   <span class="dl-lbl">RUTA N&Aacute;UTICA</span>
@@ -576,9 +616,12 @@
               </div>
               <div class="drawer-section">
                 <div class="drawer-sec-title">FUENTE</div>
-                <div class="drawer-meta">&copy; MAPBOX &middot; OPENSEAMAP &middot; NOAA</div>
+                <div class="drawer-meta">&copy; MAPBOX &middot; WINDY &middot; GEBCO &middot; OPENSEAMAP &middot; NOAA</div>
               </div>
             </div>
+
+            <!-- Windy weather overlay (Leaflet map inside, synced to Mapbox) -->
+            <div id="windy-overlay" style="position:absolute;inset:0;z-index:6;pointer-events:none;display:none;opacity:0.78;"></div>
 
             <!-- FLOATING PANELS -->
             <div id="routing-panel" class="chart-float-panel" style="display:none">
@@ -588,6 +631,21 @@
               <div class="float-panel-actions">
                 <button onclick="calcularRuta()">CALCULAR</button>
                 <button onclick="limpiarRuta()">LIMPIAR</button>
+              </div>
+            </div>
+
+            <!-- Route planning panel (expanded) -->
+            <div id="route-plan-panel" class="chart-float-panel route-plan-panel" style="display:none">
+              <div class="float-panel-head">
+                PLANIFICACI&Oacute;N DE RUTA
+                <button class="rp-close-btn" onclick="cancelRoutePlan()">&times;</button>
+              </div>
+              <div id="rp-hint" class="float-panel-hint">CLIC ORIGEN &rarr; CLIC DESTINO</div>
+              <div id="rp-segments" class="rp-segments"></div>
+              <div id="rp-total" class="rp-total" style="display:none"></div>
+              <div class="float-panel-actions" id="rp-actions" style="display:none">
+                <button onclick="exportRoutePlanGPX()">&#x2913; GPX</button>
+                <button onclick="resetRoutePlan()">&#x21BA; NUEVA</button>
               </div>
             </div>
 

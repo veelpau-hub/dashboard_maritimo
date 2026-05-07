@@ -19,6 +19,11 @@ const _layers = {
     roz:          true,
     'naut-route': false,
     routing:      false,
+    // New features
+    windy:        false,
+    gebco:        false,
+    graticule:    false,
+    'route-plan': false,
 };
 
 const _CHECK_SVG = '<svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
@@ -51,6 +56,10 @@ function toggleDrawerLayer(key) {
         case 'roz':          _applyROZ(); break;
         case 'naut-route':   _applyNautRouteMode(); break;
         case 'routing':      _applyRoutingMode(); break;
+        case 'windy':        _applyWindyOverlay(); break;
+        case 'gebco':        _applyGEBCO(); break;
+        case 'graticule':    _applyGraticule(); break;
+        case 'route-plan':   _applyRoutePlanMode(); break;
     }
 }
 
@@ -458,6 +467,7 @@ mapa.on('load', () => {
 // =================== UNIFIED CLICK DISPATCHER ===================
 mapa.on('click', e => {
     if (_aisJustClicked) { _aisJustClicked=false; return; }
+    if (_rp.mode && (_rp.origin === null || _rp.dest === null)) { _handleRoutePlanClick(e.lngLat.lat,e.lngLat.lng); return; }
     if (_nautRouteMode) { addNautWaypoint(e.lngLat.lat,e.lngLat.lng); return; }
     if (_measureMode)   { _handleMeasureClick(e.lngLat.lat,e.lngLat.lng); return; }
     if (_wpAddMode) {
@@ -615,4 +625,434 @@ function limpiarRuta() {
     if(mapLayersReady&&mapa.getSource('routing-line-src'))
         mapa.getSource('routing-line-src').setData({type:'Feature',geometry:{type:'LineString',coordinates:[]}});
     const st=document.getElementById('routing-status');if(st)st.textContent='Sin ruta';
+}
+
+// ============================================================
+// FEATURE 1 — WINDY API OVERLAY
+// Windy's visual API uses Leaflet internally. We embed it in an
+// absolutely-positioned div on top of Mapbox GL JS and sync the
+// view on every Mapbox move/zoom event.
+// ============================================================
+const WINDY_KEY = 'rwqhzpSXeuvirAsKPICXtQ6D3rkxxt1I';
+let _windyAPI    = null;
+let _windyReady  = false;
+let _windyLayer  = 'wind';
+
+function _applyWindyOverlay() {
+    const overlay = document.getElementById('windy-overlay');
+    const sel     = document.getElementById('windy-layer-sel');
+    const cnt     = document.getElementById('dl-count-windy');
+    if (!overlay) return;
+    if (_layers.windy) {
+        overlay.style.display = 'block';
+        if (sel) sel.style.display = 'flex';
+        if (cnt) cnt.textContent = _windyLayer.toUpperCase();
+        if (!_windyReady) _initWindy();
+        else _syncWindyView();
+    } else {
+        overlay.style.display = 'none';
+        if (sel) sel.style.display = 'none';
+        if (cnt) cnt.textContent = '';
+    }
+}
+
+function _initWindy() {
+    if (typeof windyInit !== 'undefined') {
+        _doInitWindy();
+        return;
+    }
+    // Lazy-load Windy boot script
+    const s = document.createElement('script');
+    s.src = 'https://api.windy.com/assets/map-forecast/libBoot.js';
+    s.onload = _doInitWindy;
+    s.onerror = () => console.warn('[windy] Failed to load Windy API');
+    document.head.appendChild(s);
+}
+
+function _doInitWindy() {
+    const container = document.getElementById('windy-overlay');
+    if (!container || typeof windyInit === 'undefined') return;
+    windyInit({
+        key:       WINDY_KEY,
+        container: container,
+        lat:       mapa.getCenter().lat,
+        lon:       mapa.getCenter().lng,
+        zoom:      Math.round(mapa.getZoom()),
+    }, api => {
+        _windyAPI   = api;
+        _windyReady = true;
+        api.overlays.change(_windyLayer);
+        // Hide Windy's own controls (they conflict with our UI)
+        container.querySelectorAll('.leaflet-control-container, #windy-copyright, #embed-zoom, .progress-bar')
+            .forEach(el => el.style.display = 'none');
+        mapa.on('moveend', _syncWindyView);
+        mapa.on('zoomend', _syncWindyView);
+    });
+}
+
+function _syncWindyView() {
+    if (!_windyAPI || !_layers.windy) return;
+    const c = mapa.getCenter();
+    _windyAPI.map.setView([c.lat, c.lng], Math.round(mapa.getZoom()));
+}
+
+function setWindyLayer(layer) {
+    _windyLayer = layer;
+    if (_windyAPI) _windyAPI.overlays.change(layer);
+    document.querySelectorAll('.wls-btn').forEach(b =>
+        b.classList.toggle('on', b.dataset.layer === layer));
+    const cnt = document.getElementById('dl-count-windy');
+    if (cnt && _layers.windy) cnt.textContent = layer.toUpperCase();
+}
+
+// ============================================================
+// FEATURE 2 — GEBCO BATHYMETRY
+// GEBCO tiles as a Mapbox GL raster layer.
+// ============================================================
+function _applyGEBCO() {
+    if (!mapLayersReady) return;
+    const active = _layers.gebco;
+    if (active && !mapa.getSource('gebco')) {
+        mapa.addSource('gebco', {
+            type: 'raster',
+            tiles: ['https://tiles.gebco.net/overlays/gebco_latest/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© GEBCO',
+        });
+        mapa.addLayer({
+            id: 'gebco-layer', type: 'raster', source: 'gebco',
+            paint: { 'raster-opacity': 0.55 },
+        }, 'zona-radio-fill'); // insert below ROZ
+    } else if (mapa.getLayer('gebco-layer')) {
+        mapa.setLayoutProperty('gebco-layer', 'visibility', active ? 'visible' : 'none');
+    }
+}
+
+// ============================================================
+// FEATURE 3 — COORDINATE GRATICULE
+// Dynamic GeoJSON grid updated on every map moveend.
+// Step adapts to zoom: 1° at z<8, 0.5° at z<11, 0.25° otherwise.
+// ============================================================
+function _applyGraticule() {
+    if (!mapLayersReady) return;
+    if (_layers.graticule) {
+        if (!mapa.getSource('graticule')) _initGraticule();
+        mapa.setLayoutProperty('graticule-lines', 'visibility', 'visible');
+        mapa.setLayoutProperty('graticule-labels', 'visibility', 'visible');
+        _updateGraticule();
+        mapa.on('moveend', _updateGraticule);
+    } else {
+        if (mapa.getLayer('graticule-lines'))  mapa.setLayoutProperty('graticule-lines',  'visibility', 'none');
+        if (mapa.getLayer('graticule-labels')) mapa.setLayoutProperty('graticule-labels', 'visibility', 'none');
+        mapa.off('moveend', _updateGraticule);
+    }
+}
+
+function _initGraticule() {
+    const emptyFC = { type: 'FeatureCollection', features: [] };
+    mapa.addSource('graticule', { type: 'geojson', data: emptyFC });
+    mapa.addSource('graticule-pts', { type: 'geojson', data: emptyFC });
+    mapa.addLayer({
+        id: 'graticule-lines', type: 'line', source: 'graticule',
+        layout: { visibility: 'none' },
+        paint: { 'line-color': '#4AC8E8', 'line-width': 0.4, 'line-opacity': 0.35, 'line-dasharray': [4, 4] },
+    });
+    mapa.addLayer({
+        id: 'graticule-labels', type: 'symbol', source: 'graticule-pts',
+        layout: {
+            visibility: 'none',
+            'text-field': ['get', 'label'],
+            'text-font': ['DIN Offc Pro Regular', 'Arial Unicode MS Regular'],
+            'text-size': 9,
+        },
+        paint: { 'text-color': '#4AC8E8', 'text-opacity': 0.6 },
+    });
+}
+
+function _updateGraticule() {
+    if (!_layers.graticule || !mapa.getSource('graticule')) return;
+    const b    = mapa.getBounds();
+    const z    = mapa.getZoom();
+    const step = z < 8 ? 1 : z < 11 ? 0.5 : 0.25;
+    const minLat = Math.floor(b.getSouth() / step) * step;
+    const maxLat = Math.ceil(b.getNorth() / step) * step;
+    const minLon = Math.floor(b.getWest()  / step) * step;
+    const maxLon = Math.ceil(b.getEast()   / step) * step;
+
+    const lines = [], labels = [];
+    for (let lat = minLat; lat <= maxLat; lat = +(lat + step).toFixed(6)) {
+        lines.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[minLon, lat], [maxLon, lat]] } });
+        const lbl = `${Math.abs(lat).toFixed(lat % 1 === 0 ? 0 : 2)}°${lat >= 0 ? 'N' : 'S'}`;
+        labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [minLon, lat] }, properties: { label: lbl } });
+    }
+    for (let lon = minLon; lon <= maxLon; lon = +(lon + step).toFixed(6)) {
+        lines.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lon, minLat], [lon, maxLat]] } });
+        const lbl = `${Math.abs(lon).toFixed(lon % 1 === 0 ? 0 : 2)}°${lon >= 0 ? 'E' : 'W'}`;
+        labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, minLat] }, properties: { label: lbl } });
+    }
+    mapa.getSource('graticule').setData({ type: 'FeatureCollection', features: lines });
+    mapa.getSource('graticule-pts').setData({ type: 'FeatureCollection', features: labels });
+}
+
+// ============================================================
+// FEATURE 4 — NAUTICAL ROUTE PLANNING WITH TURF.JS
+// Workflow:
+//   1. User clicks origin then destination
+//   2. Query Overpass for hazards + lateral buoys near route
+//   3. Turf.js booleanIntersects → bypass waypoints (0.3 NM margin)
+//   4. Detect destination port; order R/G buoys, build channel WPs
+//   5. Feature 5 — Open-Meteo Marine weather check per segment
+//   6. Show results panel; export GPX
+// ============================================================
+let _rp = {
+    mode:     false,        // planning active
+    origin:   null,         // {lat, lon}
+    dest:     null,         // {lat, lon}
+    markers:  [],
+    lineIds:  [],
+    result:   null,         // computed route
+};
+
+function _applyRoutePlanMode() {
+    _rp.mode = _layers['route-plan'];
+    const panel = document.getElementById('route-plan-panel');
+    if (!_rp.mode) {
+        mapa.getCanvas().style.cursor = '';
+        if (panel) panel.style.display = 'none';
+        _resetRPMarkers();
+    } else {
+        mapa.getCanvas().style.cursor = 'crosshair';
+        if (panel) { panel.style.display = 'block'; }
+        _setRPHint('CLIC EN EL MAPA → ORIGEN');
+    }
+}
+
+function _setRPHint(msg) {
+    const el = document.getElementById('rp-hint');
+    if (el) el.textContent = msg;
+}
+
+function _resetRPMarkers() {
+    _rp.markers.forEach(m => m.remove());
+    _rp.markers = [];
+    _rp.origin  = null;
+    _rp.dest    = null;
+    _rp.lineIds.forEach(id => { if (mapa.getLayer(id)) mapa.removeLayer(id); if (mapa.getSource(id)) mapa.removeSource(id); });
+    _rp.lineIds = [];
+}
+
+function resetRoutePlan() {
+    _resetRPMarkers();
+    const seg = document.getElementById('rp-segments'); if (seg) seg.innerHTML = '';
+    const tot = document.getElementById('rp-total');    if (tot) tot.style.display = 'none';
+    const act = document.getElementById('rp-actions'); if (act) act.style.display = 'none';
+    _setRPHint('CLIC EN EL MAPA → ORIGEN');
+}
+
+function cancelRoutePlan() {
+    _layers['route-plan'] = false;
+    _updateDrawerBtn('route-plan');
+    _updateCapasCount();
+    _applyRoutePlanMode();
+}
+
+// Called from the unified click dispatcher
+function _handleRoutePlanClick(lat, lon) {
+    if (!_rp.origin) {
+        _rp.origin = { lat, lon };
+        const el = document.createElement('div');
+        el.style.cssText = 'width:18px;height:18px;background:#22c55e;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(34,197,94,0.6)';
+        _rp.markers.push(new mapboxgl.Marker({ element: el }).setLngLat([lon, lat]).addTo(mapa));
+        _setRPHint('CLIC EN EL MAPA → DESTINO');
+    } else if (!_rp.dest) {
+        _rp.dest = { lat, lon };
+        const el = document.createElement('div');
+        el.style.cssText = 'width:18px;height:18px;background:#ef4444;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(239,68,68,0.6)';
+        _rp.markers.push(new mapboxgl.Marker({ element: el }).setLngLat([lon, lat]).addTo(mapa));
+        _setRPHint('Calculando ruta…');
+        _computeRoutePlan();
+    }
+}
+
+async function _computeRoutePlan() {
+    if (!_rp.origin || !_rp.dest) return;
+    const { lat: oLat, lon: oLon } = _rp.origin;
+    const { lat: dLat, lon: dLon } = _rp.dest;
+
+    // 1. Direct line
+    const originPt = turf.point([oLon, oLat]);
+    const destPt   = turf.point([dLon, dLat]);
+    const directLine = turf.lineString([[oLon, oLat], [dLon, dLat]]);
+
+    // 2. Fetch maritime hazards near route via Overpass
+    const hazards = await _fetchHazards(oLat, oLon, dLat, dLon);
+
+    // 3. Build ordered waypoints with hazard avoidance
+    let coords = [[oLon, oLat]];
+    for (const haz of hazards) {
+        try {
+            if (turf.booleanIntersects(directLine, haz)) {
+                const bypass = _computeBypassPoint(directLine, haz, 0.3);
+                if (bypass) coords.push(bypass);
+            }
+        } catch (_) {}
+    }
+
+    // 4. Fetch lateral buoys near destination, build channel entry WPs
+    const channelWPs = await _fetchChannelWaypoints(dLat, dLon);
+    coords = [...coords, ...channelWPs, [dLon, dLat]];
+
+    // 5. Build segments
+    const segments = [];
+    for (let i = 0; i < coords.length - 1; i++) {
+        const from = coords[i], to = coords[i + 1];
+        const dist = haversineNm(from[1], from[0], to[1], to[0]);
+        const brg  = trueBearing(from[1], from[0], to[1], to[0]);
+        segments.push({ from, to, dist: +dist.toFixed(3), bearing: +brg.toFixed(0), name: _segName(i, coords.length) });
+    }
+
+    // 6. Weather check per segment
+    const warnings = await _checkWeather(segments);
+
+    // 7. Draw route and show results
+    _drawRoutePlanLine(coords);
+    _rp.result = { coords, segments, warnings };
+    _displayRoutePlanResults(segments, warnings);
+}
+
+function _segName(i, total) {
+    if (i === 0) return 'ORIGEN';
+    if (i === total - 2) return 'LLEGADA';
+    return `WP-${String(i).padStart(2, '0')}`;
+}
+
+async function _fetchHazards(oLat, oLon, dLat, dLon) {
+    const midLat = (oLat + dLat) / 2, midLon = (oLon + dLon) / 2;
+    const radius = Math.max(2000, haversineNm(oLat, oLon, dLat, dLon) * 1852 / 2);
+    const q = `[out:json][timeout:8];(way(around:${Math.round(radius)},${midLat.toFixed(4)},${midLon.toFixed(4)})[seamark:type~"^(restricted_area|rock|obstruction|wreck|shoal)$"];relation(around:${Math.round(radius)},${midLat.toFixed(4)},${midLon.toFixed(4)})[seamark:type~"^(restricted_area|shoal)$"];);out geom;`;
+    try {
+        const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        return (d.elements || []).filter(e => e.geometry?.length >= 3).map(e => {
+            const coords = e.geometry.map(pt => [pt.lon, pt.lat]);
+            if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) coords.push(coords[0]);
+            return turf.polygon([coords]);
+        });
+    } catch (_) { return []; }
+}
+
+function _computeBypassPoint(line, hazard, marginNm) {
+    try {
+        const center = turf.centroid(hazard);
+        const buffered = turf.buffer(hazard, marginNm, { units: 'nauticalmiles' });
+        // Find the closest boundary point on the buffered polygon, then project perpendicular
+        const lineCoords = line.geometry.coordinates;
+        const midPt = turf.midpoint(turf.point(lineCoords[0]), turf.point(lineCoords[lineCoords.length - 1]));
+        const bearingToCenter = turf.bearing(midPt, center);
+        const perpBearing = (bearingToCenter + 90) % 360;
+        const bypass = turf.destination(center, marginNm + 0.1, perpBearing, { units: 'nauticalmiles' });
+        return bypass.geometry.coordinates;
+    } catch (_) { return null; }
+}
+
+async function _fetchChannelWaypoints(dLat, dLon) {
+    const q = `[out:json][timeout:8];node(around:3000,${dLat.toFixed(4)},${dLon.toFixed(4)})[seamark:type=buoy_lateral];out;`;
+    try {
+        const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        const buoys = (d.elements || []).map(e => ({
+            lat: e.lat, lon: e.lon,
+            colour: (e.tags?.['seamark:buoy_lateral:colour'] || e.tags?.['seamark:colour'] || '').toLowerCase(),
+        }));
+        const reds   = buoys.filter(b => b.colour.includes('red') || b.colour === 'r');
+        const greens = buoys.filter(b => b.colour.includes('green') || b.colour === 'g');
+        if (!reds.length || !greens.length) return [];
+
+        // Sort both from farthest to closest to destination (approach order)
+        const sortByDist = (arr) => arr.sort((a, b) =>
+            haversineNm(b.lat, b.lon, dLat, dLon) - haversineNm(a.lat, a.lon, dLat, dLon));
+        sortByDist(reds); sortByDist(greens);
+
+        const pairs = Math.min(reds.length, greens.length, 3);
+        const wps = [];
+        for (let i = 0; i < pairs; i++) {
+            wps.push([(reds[i].lon + greens[i].lon) / 2, (reds[i].lat + greens[i].lat) / 2]);
+        }
+        return wps;
+    } catch (_) { return []; }
+}
+
+async function _checkWeather(segments) {
+    const warnings = {};
+    for (const seg of segments) {
+        const [lon, lat] = seg.from;
+        try {
+            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=wave_height,wave_direction,wind_speed_10m&forecast_days=1`);
+            const d = await r.json();
+            const waves = d.hourly?.wave_height?.[0] || 0;
+            const wind  = d.hourly?.wind_speed_10m?.[0] || 0;
+            const warnLevel = waves > 2 ? 'red' : wind > 38 ? 'orange' : null; // 38 km/h ≈ BFT 6
+            if (warnLevel) warnings[seg.name] = { level: warnLevel, waves: waves.toFixed(1), wind: wind.toFixed(0) };
+        } catch (_) {}
+    }
+    return warnings;
+}
+
+function _drawRoutePlanLine(coords) {
+    // Remove old route plan lines
+    _rp.lineIds.forEach(id => { if (mapa.getLayer(id)) mapa.removeLayer(id); if (mapa.getSource(id)) mapa.removeSource(id); });
+    _rp.lineIds = [];
+    if (!mapLayersReady || coords.length < 2) return;
+    const srcId = 'rp-line-src', lyrId = 'rp-line-lyr';
+    mapa.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
+    mapa.addLayer({ id: lyrId, type: 'line', source: srcId, paint: { 'line-color': '#f59e0b', 'line-width': 2.5, 'line-opacity': 0.9, 'line-dasharray': [5, 3] } });
+    _rp.lineIds = [srcId, lyrId];
+}
+
+function _displayRoutePlanResults(segments, warnings) {
+    const segEl  = document.getElementById('rp-segments');
+    const totEl  = document.getElementById('rp-total');
+    const actEl  = document.getElementById('rp-actions');
+    if (!segEl) return;
+
+    segEl.innerHTML = '';
+    let totalNm = 0;
+    segments.forEach(seg => {
+        totalNm += seg.dist;
+        const w = warnings[seg.name];
+        const warnClass = w ? (w.level === 'red' ? 'warn-red' : 'warn-orange') : '';
+        const warnBadge = w
+            ? `<div class="rp-warn ${w.level}">⚠ Olas ${w.waves}m · Viento ${w.wind} km/h</div>`
+            : '';
+        const div = document.createElement('div');
+        div.className = `rp-segment ${warnClass}`;
+        div.innerHTML = `
+            <div class="rp-seg-head">
+                <span>${seg.name}</span>
+                <span style="color:var(--ink-3);font-size:8px">${seg.bearing}°T</span>
+            </div>
+            <div class="rp-seg-meta">
+                <span><span class="lk">RUMBO</span>${seg.bearing}°T</span>
+                <span><span class="lk">DIST</span>${seg.dist.toFixed(2)} nm</span>
+            </div>
+            ${warnBadge}`;
+        segEl.appendChild(div);
+    });
+
+    if (totEl) { totEl.textContent = `TOTAL: ${totalNm.toFixed(2)} nm`; totEl.style.display = 'block'; }
+    if (actEl) actEl.style.display = 'flex';
+    _setRPHint('Ruta calculada');
+}
+
+function exportRoutePlanGPX() {
+    if (!_rp.result) return;
+    const { coords, segments } = _rp.result;
+    const now = new Date().toISOString();
+    const wpts = coords.map((c, i) => `  <wpt lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}">\n    <name>${segments[i]?.name || `WP-${i}`}</name>\n  </wpt>`).join('\n');
+    const trkpts = coords.map(c => `      <trkpt lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}"/>`).join('\n');
+    const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Gyreo" xmlns="http://www.topografix.com/GPX/1/1">\n  <metadata><name>Gyreo Route Plan</name><time>${now}</time></metadata>\n${wpts}\n  <trk><name>Ruta Planificada Gyreo</name><trkseg>\n${trkpts}\n  </trkseg></trk>\n</gpx>`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([gpx], { type: 'application/gpx+xml' }));
+    a.download = `gyreo_plan_${now.slice(0, 10)}.gpx`;
+    a.click();
 }
