@@ -672,22 +672,25 @@ function _initWindy() {
 function _doInitWindy() {
     const container = document.getElementById('windy-overlay');
     if (!container || typeof windyInit === 'undefined') return;
-    windyInit({
-        key:       WINDY_KEY,
-        container: container,
-        lat:       mapa.getCenter().lat,
-        lon:       mapa.getCenter().lng,
-        zoom:      Math.round(mapa.getZoom()),
-    }, api => {
-        _windyAPI   = api;
-        _windyReady = true;
-        api.overlays.change(_windyLayer);
-        // Hide Windy's own controls (they conflict with our UI)
-        container.querySelectorAll('.leaflet-control-container, #windy-copyright, #embed-zoom, .progress-bar')
-            .forEach(el => el.style.display = 'none');
-        mapa.on('moveend', _syncWindyView);
-        mapa.on('zoomend', _syncWindyView);
-    });
+    // The container must be visible AND painted (have real pixel dimensions)
+    // before windyInit is called, otherwise Leaflet measures 0×0 and fails.
+    setTimeout(() => {
+        windyInit({
+            key:       WINDY_KEY,
+            container: container,
+            lat:       mapa.getCenter().lat,
+            lon:       mapa.getCenter().lng,
+            zoom:      Math.round(mapa.getZoom()),
+        }, api => {
+            _windyAPI   = api;
+            _windyReady = true;
+            api.overlays.change(_windyLayer);
+            // Sync current Mapbox view immediately
+            _syncWindyView();
+            mapa.on('moveend', _syncWindyView);
+            mapa.on('zoomend', _syncWindyView);
+        });
+    }, 250);
 }
 
 function _syncWindyView() {
@@ -719,10 +722,13 @@ function _applyGEBCO() {
             tileSize: 256,
             attribution: '© GEBCO',
         });
+        // Insert below the first symbol layer so it sits under labels/icons.
+        // Never reference a specific layer by name — it might not exist yet.
+        const firstSymbol = mapa.getStyle().layers.find(l => l.type === 'symbol')?.id;
         mapa.addLayer({
             id: 'gebco-layer', type: 'raster', source: 'gebco',
-            paint: { 'raster-opacity': 0.55 },
-        }, 'zona-radio-fill'); // insert below ROZ
+            paint: { 'raster-opacity': 0.6 },
+        }, firstSymbol);
     } else if (mapa.getLayer('gebco-layer')) {
         mapa.setLayoutProperty('gebco-layer', 'visibility', active ? 'visible' : 'none');
     }
@@ -737,61 +743,58 @@ function _applyGraticule() {
     if (!mapLayersReady) return;
     if (_layers.graticule) {
         if (!mapa.getSource('graticule')) _initGraticule();
-        mapa.setLayoutProperty('graticule-lines', 'visibility', 'visible');
-        mapa.setLayoutProperty('graticule-labels', 'visibility', 'visible');
+        if (mapa.getLayer('graticule-lines')) mapa.setLayoutProperty('graticule-lines', 'visibility', 'visible');
         _updateGraticule();
         mapa.on('moveend', _updateGraticule);
+        mapa.on('zoomend', _updateGraticule);
     } else {
-        if (mapa.getLayer('graticule-lines'))  mapa.setLayoutProperty('graticule-lines',  'visibility', 'none');
-        if (mapa.getLayer('graticule-labels')) mapa.setLayoutProperty('graticule-labels', 'visibility', 'none');
+        if (mapa.getLayer('graticule-lines')) mapa.setLayoutProperty('graticule-lines', 'visibility', 'none');
         mapa.off('moveend', _updateGraticule);
+        mapa.off('zoomend', _updateGraticule);
     }
 }
 
 function _initGraticule() {
-    const emptyFC = { type: 'FeatureCollection', features: [] };
-    mapa.addSource('graticule', { type: 'geojson', data: emptyFC });
-    mapa.addSource('graticule-pts', { type: 'geojson', data: emptyFC });
+    // Only a line layer — symbol layers require specific glyph stacks that
+    // differ between Mapbox styles and fail silently when fonts aren't available.
+    mapa.addSource('graticule', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     mapa.addLayer({
         id: 'graticule-lines', type: 'line', source: 'graticule',
         layout: { visibility: 'none' },
-        paint: { 'line-color': '#4AC8E8', 'line-width': 0.4, 'line-opacity': 0.35, 'line-dasharray': [4, 4] },
-    });
-    mapa.addLayer({
-        id: 'graticule-labels', type: 'symbol', source: 'graticule-pts',
-        layout: {
-            visibility: 'none',
-            'text-field': ['get', 'label'],
-            'text-font': ['DIN Offc Pro Regular', 'Arial Unicode MS Regular'],
-            'text-size': 9,
-        },
-        paint: { 'text-color': '#4AC8E8', 'text-opacity': 0.6 },
+        paint: { 'line-color': '#4AC8E8', 'line-width': 0.5, 'line-opacity': 0.45, 'line-dasharray': [4, 4] },
     });
 }
 
 function _updateGraticule() {
-    if (!_layers.graticule || !mapa.getSource('graticule')) return;
+    if (!_layers.graticule) return;
+    const src = mapa.getSource('graticule');
+    if (!src) return;
+
     const b    = mapa.getBounds();
     const z    = mapa.getZoom();
-    const step = z < 8 ? 1 : z < 11 ? 0.5 : 0.25;
+    const step = z < 7 ? 2 : z < 9 ? 1 : z < 11 ? 0.5 : 0.25;
+
+    // Round bounds outward to nearest step to avoid partial lines at edges
     const minLat = Math.floor(b.getSouth() / step) * step;
-    const maxLat = Math.ceil(b.getNorth() / step) * step;
+    const maxLat = Math.ceil(b.getNorth()  / step) * step;
     const minLon = Math.floor(b.getWest()  / step) * step;
     const maxLon = Math.ceil(b.getEast()   / step) * step;
 
-    const lines = [], labels = [];
-    for (let lat = minLat; lat <= maxLat; lat = +(lat + step).toFixed(6)) {
-        lines.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[minLon, lat], [maxLon, lat]] } });
-        const lbl = `${Math.abs(lat).toFixed(lat % 1 === 0 ? 0 : 2)}°${lat >= 0 ? 'N' : 'S'}`;
-        labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [minLon, lat] }, properties: { label: lbl } });
+    const features = [];
+    const MAXITER = 500; // safety cap against floating-point drift
+    let iter;
+
+    iter = 0;
+    for (let lat = minLat; lat <= maxLat + step * 0.01 && iter < MAXITER; lat += step, iter++) {
+        const y = +lat.toFixed(6);
+        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[minLon, y], [maxLon, y]] } });
     }
-    for (let lon = minLon; lon <= maxLon; lon = +(lon + step).toFixed(6)) {
-        lines.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lon, minLat], [lon, maxLat]] } });
-        const lbl = `${Math.abs(lon).toFixed(lon % 1 === 0 ? 0 : 2)}°${lon >= 0 ? 'E' : 'W'}`;
-        labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, minLat] }, properties: { label: lbl } });
+    iter = 0;
+    for (let lon = minLon; lon <= maxLon + step * 0.01 && iter < MAXITER; lon += step, iter++) {
+        const x = +lon.toFixed(6);
+        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[x, minLat], [x, maxLat]] } });
     }
-    mapa.getSource('graticule').setData({ type: 'FeatureCollection', features: lines });
-    mapa.getSource('graticule-pts').setData({ type: 'FeatureCollection', features: labels });
+    src.setData({ type: 'FeatureCollection', features });
 }
 
 // ============================================================

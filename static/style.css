@@ -1699,3 +1699,20 @@ body.map-fullscreen .content {
   padding-top: 8px;
   margin-top: 4px;
 }
+
+/* ───────── WINDY OVERLAY — TRANSPARENCY ───────── */
+/* Windy creates a Leaflet map with a solid background.
+   Setting background to transparent lets Mapbox GL JS show through.
+   All controls/copyright are hidden — we use Mapbox UI instead.   */
+#windy-overlay .leaflet-container {
+  background: transparent !important;
+}
+#windy-overlay .leaflet-control-container,
+#windy-overlay #windy-copyright,
+#windy-overlay #logo,
+#windy-overlay .progress-bar,
+#windy-overlay #embed-zoom,
+#windy-overlay .map-layer-toggle,
+#windy-overlay #mobile-ovr-select {
+  display: none !important;
+}
