@@ -628,88 +628,65 @@ function limpiarRuta() {
 }
 
 // ============================================================
-// FEATURE 1 — WINDY API OVERLAY
-// Windy's visual API uses Leaflet internally. We embed it in an
-// absolutely-positioned div on top of Mapbox GL JS and sync the
-// view on every Mapbox move/zoom event.
+// FEATURE 1 — WINDY IFRAME OVERLAY
+// The Windy JS API is incompatible with Mapbox GL JS as an overlay.
+// We use Windy's public embed URL in an iframe instead — reliable,
+// no API key needed for the iframe embed, and supports all layers.
+// The iframe is positioned absolutely over the map and reloaded
+// when the user changes layers or re-centres the view.
 // ============================================================
-const WINDY_KEY = 'rwqhzpSXeuvirAsKPICXtQ6D3rkxxt1I';
-let _windyAPI    = null;
-let _windyReady  = false;
-let _windyLayer  = 'wind';
+let _windyLayer = 'wind';
+
+function _buildWindyUrl(layer) {
+    const c = mapa.getCenter();
+    const z = Math.max(4, Math.min(12, Math.round(mapa.getZoom())));
+    return 'https://embed.windy.com/embed.html' +
+        '?type=map&location=coordinates' +
+        '&metricRain=mm&metricTemp=%C2%B0C&metricWind=kt' +
+        `&zoom=${z}&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}` +
+        `&overlay=${layer}&product=ecmwf&level=surface`;
+}
+
+function _loadWindyIframe() {
+    const div = document.getElementById('windy');
+    if (!div) return;
+    const url = _buildWindyUrl(_windyLayer);
+    const frame = div.querySelector('iframe');
+    if (frame) {
+        frame.src = url;
+    } else {
+        div.innerHTML =
+            `<iframe src="${url}" ` +
+            `style="width:100%;height:100%;border:none;" ` +
+            `allowfullscreen loading="lazy"></iframe>`;
+    }
+}
 
 function _applyWindyOverlay() {
-    // Windy API requires a div with id="windy" — this is hardcoded in their library.
-    const windyDiv = document.getElementById('windy');
+    const div = document.getElementById('windy');
     const sel = document.getElementById('windy-layer-sel');
     const cnt = document.getElementById('dl-count-windy');
-    if (!windyDiv) return;
+    if (!div) return;
 
     if (_layers.windy) {
-        windyDiv.style.display = 'block';
+        div.style.display = 'block';
         if (sel) sel.style.display = 'flex';
         if (cnt) cnt.textContent = _windyLayer.toUpperCase();
-        if (!_windyReady) _initWindy();
-        else _syncWindyView();
+        _loadWindyIframe();
     } else {
-        windyDiv.style.display = 'none';
+        div.style.display = 'none';
         if (sel) sel.style.display = 'none';
         if (cnt) cnt.textContent = '';
     }
 }
 
-function _initWindy() {
-    // The script is loaded in <head> with async — it may not be ready yet.
-    // Poll until windyInit is available, then initialize.
-    if (typeof windyInit === 'undefined') {
-        setTimeout(_initWindy, 300);
-        return;
-    }
-    _doInitWindy();
-}
-
-function _doInitWindy() {
-    const windyDiv = document.getElementById('windy');
-    if (!windyDiv) return;
-
-    // Verify the div has real pixel dimensions before initializing.
-    // Leaflet measures the container on init — if it's 0×0 it fails silently.
-    const rect = windyDiv.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-        setTimeout(_doInitWindy, 300);
-        return;
-    }
-
-    // windyInit uses #windy div automatically — do NOT pass container option.
-    windyInit({
-        key:     WINDY_KEY,
-        lat:     mapa.getCenter().lat,
-        lon:     mapa.getCenter().lng,
-        zoom:    Math.round(mapa.getZoom()),
-        overlay: _windyLayer,
-        verbose: false,
-    }, api => {
-        _windyAPI   = api;
-        _windyReady = true;
-        _syncWindyView();
-        mapa.on('moveend', _syncWindyView);
-        mapa.on('zoomend', _syncWindyView);
-    });
-}
-
-function _syncWindyView() {
-    if (!_windyAPI || !_layers.windy) return;
-    const c = mapa.getCenter();
-    _windyAPI.map.setView([c.lat, c.lng], Math.round(mapa.getZoom()));
-}
-
 function setWindyLayer(layer) {
     _windyLayer = layer;
-    if (_windyAPI) _windyAPI.overlays.change(layer);
     document.querySelectorAll('.wls-btn').forEach(b =>
         b.classList.toggle('on', b.dataset.layer === layer));
     const cnt = document.getElementById('dl-count-windy');
     if (cnt && _layers.windy) cnt.textContent = layer.toUpperCase();
+    if (_layers.windy) _loadWindyIframe();
 }
 
 // ============================================================

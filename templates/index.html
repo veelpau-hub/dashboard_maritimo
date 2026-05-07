@@ -41,9 +41,6 @@
   <!-- Turf.js — geospatial calculations -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
-  <!-- Windy API — loaded in head so windyInit is ready when user activates layer -->
-  <script src="https://api.windy.com/assets/map-forecast/libBoot.js" async></script>
-
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -623,8 +620,8 @@
               </div>
             </div>
 
-            <!-- Windy weather overlay — MUST have id="windy" (Windy API hardcodes this selector) -->
-            <div id="windy" style="position:absolute;inset:0;z-index:6;pointer-events:none;display:none;opacity:0.78;"></div>
+            <!-- Windy iframe overlay — shows Windy weather map over Mapbox -->
+            <div id="windy" style="position:absolute;inset:0;z-index:6;display:none;"></div>
 
             <!-- FLOATING PANELS -->
             <div id="routing-panel" class="chart-float-panel" style="display:none">
