@@ -2218,6 +2218,38 @@ agente_monitor.start(
     on_issue_fn=_on_issue,
 )
 
+# ── SAR Sentinel-1 ───────────────────────────────────────────────────────────
+import sar_processor
+
+@app.route('/api/sar/status')
+def api_sar_status():
+    return jsonify(sar_processor.status())
+
+@app.route('/api/sar/refresh', methods=['POST'])
+def api_sar_refresh():
+    try:
+        meta = sar_processor.run()
+        if meta:
+            return jsonify({'status': 'ok', 'meta': meta})
+        return jsonify({'status': 'no_update'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Scheduler SAR: cada 12h en hilo daemon
+import threading as _sar_threading
+
+def _sar_loop():
+    import time as _t
+    _t.sleep(60)  # esperar 1 min al arrancar antes del primer intento
+    while True:
+        try:
+            sar_processor.run()
+        except Exception as e:
+            logging.error(f'[SAR scheduler] {e}')
+        _t.sleep(12 * 3600)
+
+_sar_threading.Thread(target=_sar_loop, daemon=True, name='sar-scheduler').start()
+
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

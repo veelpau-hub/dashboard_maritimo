@@ -24,6 +24,7 @@ const _layers = {
     gebco:        false,
     graticule:    false,
     'route-plan': false,
+    sar:          false,
 };
 
 const _CHECK_SVG = '<svg viewBox="0 0 12 12"><path d="M2 6 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
@@ -60,6 +61,7 @@ function toggleDrawerLayer(key) {
         case 'gebco':        _applyGEBCO(); break;
         case 'graticule':    _applyGraticule(); break;
         case 'route-plan':   _applyRoutePlanMode(); break;
+        case 'sar':          _applySAR(); break;
     }
 }
 
@@ -1046,4 +1048,101 @@ function exportRoutePlanGPX() {
     a.href = URL.createObjectURL(new Blob([gpx], { type: 'application/gpx+xml' }));
     a.download = `gyreo_plan_${now.slice(0, 10)}.gpx`;
     a.click();
+}
+
+// ============================================================
+// SAR — Sentinel-1 Layer
+// Carga /static/sar_latest.png como capa de imagen georeferenciada.
+// Los metadatos de /api/sar/status proveen bounds y fecha.
+// ============================================================
+let _sarMeta = null;
+
+async function _applySAR() {
+    if (!mapLayersReady) return;
+    const active = _layers.sar;
+
+    if (!active) {
+        if (mapa.getLayer('sar-layer')) mapa.setLayoutProperty('sar-layer', 'visibility', 'none');
+        const badge = document.getElementById('sar-badge');
+        if (badge) badge.style.display = 'none';
+        return;
+    }
+
+    // Fetch metadata if not yet loaded
+    if (!_sarMeta) {
+        try {
+            const r = await fetch('/api/sar/status');
+            _sarMeta = await r.json();
+        } catch (_) {
+            _sarMeta = { available: false };
+        }
+    }
+
+    _updateSARBadge(_sarMeta);
+
+    if (!_sarMeta?.available) {
+        _updateDrawerBtn('sar');
+        const cnt = document.getElementById('dl-count-sar');
+        if (cnt) cnt.textContent = 'N/D';
+        return;
+    }
+
+    const b = _sarMeta.bounds;  // [west, south, east, north]
+    const imgUrl = `/static/sar_latest.png?t=${Date.now()}`;  // cache-bust
+
+    if (mapa.getSource('sar-source')) {
+        // Already added — just toggle visibility
+        mapa.setLayoutProperty('sar-layer', 'visibility', 'visible');
+        return;
+    }
+
+    mapa.addSource('sar-source', {
+        type: 'image',
+        url: imgUrl,
+        coordinates: [
+            [b[0], b[3]],  // top-left  [west, north]
+            [b[2], b[3]],  // top-right [east, north]
+            [b[2], b[1]],  // bot-right [east, south]
+            [b[0], b[1]],  // bot-left  [west, south]
+        ],
+    });
+    mapa.addLayer({
+        id:     'sar-layer',
+        type:   'raster',
+        source: 'sar-source',
+        paint:  { 'raster-opacity': 0.72, 'raster-contrast': 0.25 },
+    });
+}
+
+function _updateSARBadge(meta) {
+    let badge = document.getElementById('sar-badge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'sar-badge';
+        badge.style.cssText = [
+            'position:absolute', 'bottom:44px', 'left:12px', 'z-index:8',
+            'font-family:var(--mono-font)', 'font-size:9px', 'letter-spacing:0.12em',
+            'padding:4px 8px', 'border-radius:2px',
+            'background:color-mix(in oklch,var(--bg-0) 88%,transparent)',
+            'backdrop-filter:blur(8px)', 'border:1px solid var(--line-2)',
+            'border-left:2px solid var(--good)',
+        ].join(';');
+        document.getElementById('panel-mapa')?.appendChild(badge);
+    }
+
+    if (!meta?.available) {
+        badge.style.borderLeftColor = 'var(--alert)';
+        badge.textContent = '🔴 SAR NO DISPONIBLE';
+        badge.style.display = 'block';
+        return;
+    }
+
+    const date   = new Date(meta.date);
+    const ageH   = meta.age_hours || 0;
+    const color  = ageH < 48 ? 'var(--good)' : ageH < 120 ? 'var(--accent-warm)' : 'var(--alert)';
+    const dot    = ageH < 48 ? '🟢' : ageH < 120 ? '🟡' : '🔴';
+    const dateStr = date.toUTCString().replace(':00 GMT', ' UTC');
+    badge.style.borderLeftColor = color;
+    badge.textContent = `${dot} SAR S-1 · ${dateStr}`;
+    badge.style.display = 'block';
 }
