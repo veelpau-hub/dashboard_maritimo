@@ -2231,8 +2231,12 @@ def api_sar_refresh():
         meta = sar_processor.run()
         if meta:
             return jsonify({'status': 'ok', 'meta': meta})
-        return jsonify({'status': 'no_update'})
+        return jsonify({'status': 'no_update', 'reason': 'sin producto nuevo o ya procesado'})
+    except RuntimeError as e:
+        logging.error(f'[SAR] RuntimeError: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
+        logging.error(f'[SAR] Error inesperado: {e}', exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Scheduler SAR: cada 12h en hilo daemon
