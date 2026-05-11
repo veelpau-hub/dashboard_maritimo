@@ -2,7 +2,7 @@ mapboxgl.accessToken = MAPBOX_KEY;
 
 const mapa = new mapboxgl.Map({
     container: 'mapa',
-    style: 'mapbox://styles/mapbox/navigation-night-v1',
+    style: 'mapbox://styles/mapbox/dark-v11',
     center: [-6.3621, 36.6367],
     zoom: 11.5, pitch: 45, bearing: -15
 });
@@ -83,7 +83,7 @@ function setBasemap(name) {
 
     const style = name === 'SATELLITE'
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
-        : 'mapbox://styles/mapbox/navigation-night-v1';
+        : 'mapbox://styles/mapbox/dark-v11';
     mapa.setStyle(style);
     mapa.once('style.load', () => {
         try { mapa.setPaintProperty('water','fill-color','#071428'); } catch(_) {}
