@@ -253,6 +253,7 @@ def delete_buque_aprobado(mmsi):
     conn.close()
     _buques_aprobados_cache.discard(mmsi)
 
+init_db()
 # Load approved vessels on startup (after init_db)
 _load_buques_aprobados()
 
@@ -2255,5 +2256,4 @@ def _sar_loop():
 _sar_threading.Thread(target=_sar_loop, daemon=True, name='sar-scheduler').start()
 
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
